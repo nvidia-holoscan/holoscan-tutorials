@@ -1,6 +1,6 @@
 # Holoscan Tutorials
 
-Tutorials for the [NVIDIA Holoscan SDK](https://github.com/nvidia-holoscan/holoscan-sdk),
+Tutorials for the [NVIDIA Holoscan SDK](https://github.com/nvidia-holoscan/holoscan-sdk)
 
 A tutorial here is a self-contained directory that teaches one topic: a `README.md`
 walkthrough, a `metadata.json` descriptor, and whatever sources, notebooks, scripts, or
@@ -11,7 +11,7 @@ Browse [`tutorials/`](tutorials/) to see what is available.
 
 ## Repository layout
 ```text
-template/                      Starting files for a new tutorial
+README.md.template            Walkthrough template for a new tutorial
 tutorials/<tutorial-name>/     One tutorial: README.md + metadata.json + sources
 ```
 
@@ -39,7 +39,7 @@ so run them from a HoloHub checkout rather than from this repository.
 
 ### `README.md`
 
-The walkthrough. Start from [`template/README.md.template`](template/README.md.template),
+The walkthrough. Start from [`README.md.template`](README.md.template),
 which lays out the expected sections:
 
 | Section | Contents |
@@ -66,52 +66,24 @@ The machine-readable descriptor, used to index and describe the tutorial. It fol
 - [`project.schema.json`](https://github.com/nvidia-holoscan/holoscan-cli/blob/main/src/holoscan_cli/metadata/project.schema.json)
   — the shared definitions that `tutorial.schema.json` references
 
-Every field lives under a single top-level `tutorial` object, alongside an optional
-`$schema` string. Start from [`template/metadata.json.template`](template/metadata.json.template).
-
-| Field | Required | Description |
-| --- | --- | --- |
-| `name` | yes | Human-readable tutorial name |
-| `authors` | yes | Array of objects; each needs **both** `name` and `affiliation` |
-| `version` | yes | Tutorial version, `MAJOR.MINOR[.PATCH]` with no leading zeros |
-| `changelog` | yes | Object mapping each version to a one-line summary |
-| `tags` | yes | Array of free-form strings used for discovery |
-| `holoscan_sdk` | yes | Object with `minimum_required_version` and `tested_versions` (an array); both use the `version` format |
-| `requirements` | yes | Object; may be `{}`. Defined keys are `data`, `gxf_extensions`, and `hardware` |
-| `description` | no | One- or two-sentence summary |
-| `platforms` | no | Array limited to `x86_64` and `aarch64` |
-| `ranking` | no | Integer 0–5 self-assessment of maturity, lowest is most mature |
-| `run` | no | Launch configuration: `command`, `workdir`, `docker_run_args`, `env` |
-
-Notes on the fields that are easy to get wrong:
-
-- **`requirements` entries.** `gxf_extensions` takes `{name, version}` objects. `hardware`
-  takes `{name, description}` objects, optionally with `version` and a `required` boolean
-  that defaults to `true`. `data` is a free-form array.
-- **`ranking`.** The levels are defined in the
-  [HoloHub contributing guide](https://github.com/nvidia-holoscan/holohub/blob/main/CONTRIBUTING.md):
-  0 is production-ready and SDK-level, 3 is features under development, 4 is code of
-  unknown quality, 5 is deprecated. Pick honestly; most tutorials sit at 1 or 2.
-- **Extra keys.** The schema does not forbid properties it has not defined, so additional
-  keys validate. `language` is the common one — it is defined in the shared project schema
-  and most tutorials here set it (`Python`, `C++`, or an array of both).
-- **`run.command`.** The Holoscan CLI expands placeholders and parses this into an argument
-  vector without an implicit shell. Shell syntax such as pipes or `&&` will not work.
+Use these schemas as the reference for required fields, supported values, and metadata
+guidance. Put tutorial fields under a single top-level `tutorial` object, alongside an
+optional `$schema` string.
 
 ## Adding a tutorial
 
-1. Create `tutorials/<tutorial-name>/` and copy in the two template files, dropping the
+1. Create `tutorials/<tutorial-name>/` and copy in the README template, dropping the
    `.template` suffix:
 
    ```bash
    mkdir -p tutorials/<tutorial-name>
-   cp template/README.md.template tutorials/<tutorial-name>/README.md
-   cp template/metadata.json.template tutorials/<tutorial-name>/metadata.json
+   cp README.md.template tutorials/<tutorial-name>/README.md
    ```
 
-2. Write the walkthrough and fill in the metadata. Set `version` to `0.1.0` with a matching
-   `changelog` entry, and set `holoscan_sdk.tested_versions` to the versions you actually
-   ran against.
+2. Write the walkthrough and create `metadata.json` using the
+   [Holoscan CLI tutorial schema](https://github.com/nvidia-holoscan/holoscan-cli/blob/main/src/holoscan_cli/metadata/tutorial.schema.json)
+   as the reference. Set `version` to `0.1.0` with a matching `changelog` entry, and set
+   `holoscan_sdk.tested_versions` to the versions you actually ran against.
 3. Add your sources alongside them. Add an SPDX header to new source files, naming the year
    and your own organization, as existing files under `tutorials/` do:
 
@@ -144,7 +116,7 @@ The script covers this file and everything under `tutorials/`, checking that:
 - Notebooks pass `nbformat` validation
 - Relative Markdown links and image paths point at files that exist
 
-External URLs, link anchors, and the contents of `template/` are not checked. The script
+External URLs, link anchors, and `README.md.template` are not checked. The script
 does not build SDK examples or execute notebooks, containers, or GPU workloads — validate
 runtime behavior by following the tutorial yourself.
 
