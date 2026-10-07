@@ -1,0 +1,36 @@
+{
+	"tutorial": {
+		"name": "Holoscan Playground on AWS",
+		"description": "The Holoscan on AWS EC2 experience is an easy way for having a first try at the Holoscan SDK.",
+		"authors": [
+			{
+				"name": "Jin Li",
+				"affiliation": "NVIDIA"
+			}
+		],
+		"version": "0.1.0",
+		"changelog": {
+			"0.1.0": "Initial Release"
+		},
+		"holoscan_sdk": {
+			"minimum_required_version": "0.6.0",
+			"tested_versions": [
+				"0.6.0"
+			]
+		},
+		"platforms": [
+			"x86_64",
+			"aarch64"
+		],
+		"tags": ["Deployment", "Cloud", "AWS"],
+		"ranking": 1,
+		"requirements": {
+			"services": [
+				{
+					"name": "Amazon Web Services EC2",
+					"url": "https://aws.amazon.com/ec2/"
+				}
+			]
+		}
+	}
+}

@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# ==============================================================================
+# HoloHub CLI wrapper — external-application example
+# ==============================================================================
+# Minimal wrapper that installs (if needed) and delegates to the standalone
+# `holoscan-cli` package. Copy it into an external project to drive
+# HoloHub-style build/run from there.
+#
+# Env vars:
+#   HOLOSCAN_CLI_SOURCE      Local holoscan-cli checkout; wins over install args.
+#   HOLOSCAN_CLI_INSTALL_ARGS
+#                            Pip install arguments. Default:
+#                            `--pre --extra-index-url https://pypi.nvidia.com holoscan-cli>4.2.0`.
+#   HOLOSCAN_CLI_BASE_SDK_VERSION
+#                            Holoscan SDK version for container base images
+#                            (required by run/build/package). Default: 4.6.0.
+#   HOLOSCAN_CLI_PYTHON_BIN  Python interpreter (default: python3).
+#
+# Examples:
+#   ./holohubCLI_wrapper --help
+#   HOLOSCAN_CLI_INSTALL_ARGS="holoscan-cli==4.6.0" ./holohubCLI_wrapper list
+# ==============================================================================
+
+set -euo pipefail
+
+# Pin the source-project root to this script's directory so it works from any
+# cwd (otherwise `python -m holoscan_cli` scans the caller's cwd and builds the
+# wrong tree). Mirrors the repo-root `./holohub` wrapper.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+export HOLOSCAN_CLI_CMD_NAME="${BASH_SOURCE[0]}"
+export HOLOSCAN_CLI_ROOT="${SCRIPT_DIR}"
+
+# Default Holoscan SDK version for project container base images. Recent
+# holoscan-cli releases decoupled the base image from the CLI version and no
+# longer ship a built-in default, so `run`/`build`/`package` error out unless
+# this is set (or `--base-img` is passed). Override to match the SDK your
+# external project targets. Env var takes precedence.
+export HOLOSCAN_CLI_BASE_SDK_VERSION="${HOLOSCAN_CLI_BASE_SDK_VERSION:-4.6.0}"
+
+PYTHON_BIN="${HOLOSCAN_CLI_PYTHON_BIN:-python3}"
+export HOLOSCAN_CLI_INSTALL_ARGS="${HOLOSCAN_CLI_INSTALL_ARGS:---pre --extra-index-url https://pypi.nvidia.com holoscan-cli>4.2.0}"
+
+# Make a HOLOSCAN_CLI_SOURCE checkout win over any system-installed copy by
+# prepending `<source>/src` to PYTHONPATH. Mirrors the repo-root wrapper.
+if [[ -n "${HOLOSCAN_CLI_SOURCE:-}" ]]; then
+    export PYTHONPATH="${HOLOSCAN_CLI_SOURCE%/}/src${PYTHONPATH:+:${PYTHONPATH}}"
+fi
+
+_holoscan_cli_has_source_project_dispatch() {
+    # Probe the public `holoscan --help` surface (same interpreter, so a
+    # PYTHONPATH checkout wins) for a source-project command only the
+    # consolidated CLI has.
+    "${PYTHON_BIN}" -m holoscan_cli --help 2>/dev/null | grep -qw build
+}
+
+_install_holoscan_cli() {
+    if [[ -n "${HOLOSCAN_CLI_SOURCE:-}" ]]; then
+        echo "[holohubCLI_wrapper] installing holoscan-cli from local source: ${HOLOSCAN_CLI_SOURCE}" >&2
+        "${PYTHON_BIN}" -m pip install --quiet --upgrade "${HOLOSCAN_CLI_SOURCE}"
+    else
+        echo "[holohubCLI_wrapper] installing with args: ${HOLOSCAN_CLI_INSTALL_ARGS}" >&2
+        "${PYTHON_BIN}" -m pip install --quiet --upgrade ${HOLOSCAN_CLI_INSTALL_ARGS}
+    fi
+}
+
+if ! _holoscan_cli_has_source_project_dispatch; then
+    if ! "${PYTHON_BIN}" -m pip --version >/dev/null 2>&1; then
+        "${PYTHON_BIN}" -m ensurepip --upgrade >/dev/null 2>&1 || {
+            echo "[holohubCLI_wrapper] ${PYTHON_BIN} has no pip and ensurepip is unavailable;" \
+                 "install pip (or set HOLOSCAN_CLI_PYTHON_BIN to an interpreter that has it) and retry" >&2
+            exit 1
+        }
+    fi
+    _install_holoscan_cli
+fi
+
+exec "${PYTHON_BIN}" -m holoscan_cli "$@"
