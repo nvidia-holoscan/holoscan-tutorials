@@ -2,32 +2,33 @@
 
 Tutorials for the [NVIDIA Holoscan SDK](https://github.com/nvidia-holoscan/holoscan-sdk)
 
-A tutorial here is a self-contained directory that teaches one topic: a `README.md`
-walkthrough, a `metadata.json` descriptor, and whatever sources, notebooks, scripts, or
-configuration the walkthrough refers to. This repository holds tutorial content only —
-it is not the HoloHub CLI, and it has no repository-wide build.
+Each tutorial is a self-contained directory focused on one topic. It includes a
+`README.md` walkthrough, a `metadata.json` descriptor, and any sources, notebooks,
+scripts, or configuration needed to follow along. This repository contains tutorial
+content and has no repository-wide build.
 
 Browse [`tutorials/`](tutorials/) to see what is available.
 
 ## Repository layout
+
 ```text
-README.md.template            Walkthrough template for a new tutorial
 tutorials/<tutorial-name>/     One tutorial: README.md + metadata.json + sources
 ```
 
-A tutorial directory may also group related sub-tutorials in subdirectories. In that case
+A tutorial directory may also group related tutorials in subdirectories. In that case,
 the parent `README.md` introduces the group and each subdirectory carries its own
 `metadata.json`.
 
 ## Using a tutorial
 
-1. Read the tutorial's `README.md` and `metadata.json` first. Between them they state the
+1. Read the tutorial's `README.md` and `metadata.json` first. Together, they describe the
    supported SDK versions, platforms, hardware, dependencies, and data.
 2. Install the SDK version the tutorial requires, using the
    [Holoscan SDK installation guide](https://docs.nvidia.com/holoscan/sdk-user-guide/setup/sdk-installation).
    Tutorials target different releases, and many need a GPU, containers, datasets, or
    additional hardware.
-3. Follow the tutorial's own commands from its directory.
+3. Follow the walkthrough, running commands from the tutorial's directory unless it
+   specifies another location.
 
 Some tutorials give instructions that run against a HoloHub checkout — anything invoking
 `./holohub`, or referring to HoloHub applications, operators, modules, or benchmark data.
@@ -39,28 +40,29 @@ so run them from a HoloHub checkout rather than from this repository.
 
 ### `README.md`
 
-The walkthrough. Start from [`README.md.template`](README.md.template),
-which lays out the expected sections:
+The README is the tutorial's main walkthrough. Every tutorial README must include a
+clear title and at least one splash image, diagram, or other visualization that helps
+readers understand the topic or see what they will build.
 
-| Section | Contents |
+The sections below are recommendations. Adapt their names, order, and content to suit
+your tutorial and audience. You may combine or omit sections, or add others where useful.
+
+| Suggested section | What to cover |
 | --- | --- |
-| Title and splash image | The tutorial name, plus an image highlighting it |
-| Overview | One sentence on the purpose and operations |
-| Description | Detail and background for an average reader, with diagrams where they help |
+| Overview | A brief summary of the tutorial's purpose and what readers will learn |
+| Description | Background and explanations that help readers follow the tutorial |
 | Data | Any datasets the tutorial uses |
 | Requirements | Hardware and software a reader needs before building or running |
 | Tutorial Instructions | The step-by-step walkthrough, including runnable commands |
-| Acknowledgements | Methods and collaborators cited |
+| Acknowledgements | Credits for collaborators and references to methods or resources used |
 
-Sections that do not apply can be dropped, and topic-specific ones (troubleshooting,
-references, performance results) can be added. Keep runtime requirements in the tutorial
-itself rather than in this file, and make every relative link resolve — the validation
-script checks them.
+Keep setup and runtime requirements in the tutorial, and ensure all relative links point
+to existing files or directories. The validation script checks these local links.
 
 ### `metadata.json`
 
-The machine-readable descriptor, used to index and describe the tutorial. It follows the
-`urn:holohub:tutorial:v1` schema published by the Holoscan CLI:
+The `metadata.json` file is a machine-readable descriptor used to index and describe the
+tutorial. It must follow the `urn:holohub:tutorial:v1` schema published by the Holoscan CLI:
 
 - [`tutorial.schema.json`](https://github.com/nvidia-holoscan/holoscan-cli/blob/main/src/holoscan_cli/metadata/tutorial.schema.json)
 - [`project.schema.json`](https://github.com/nvidia-holoscan/holoscan-cli/blob/main/src/holoscan_cli/metadata/project.schema.json)
@@ -72,19 +74,18 @@ optional `$schema` string.
 
 ## Adding a tutorial
 
-1. Create `tutorials/<tutorial-name>/` and copy in the README template, dropping the
-   `.template` suffix:
+1. Create a directory under `tutorials/` with a descriptive name, for example:
 
    ```bash
-   mkdir -p tutorials/<tutorial-name>
-   cp README.md.template tutorials/<tutorial-name>/README.md
+   mkdir -p tutorials/my-tutorial
    ```
 
-2. Write the walkthrough and create `metadata.json` using the
+2. In that directory, write `README.md` following the guidance above, and create
+   `metadata.json` using the
    [Holoscan CLI tutorial schema](https://github.com/nvidia-holoscan/holoscan-cli/blob/main/src/holoscan_cli/metadata/tutorial.schema.json)
    as the reference. Set `version` to `0.1.0` with a matching `changelog` entry, and set
    `holoscan_sdk.tested_versions` to the versions you actually ran against.
-3. Add your sources alongside them. Add an SPDX header to new source files, naming the year
+3. Add your sources alongside these files. Add an SPDX header to new source files, naming the year
    and your own organization, as existing files under `tutorials/` do:
 
    ```text
@@ -116,9 +117,9 @@ The script covers this file and everything under `tutorials/`, checking that:
 - Notebooks pass `nbformat` validation
 - Relative Markdown links and image paths point at files that exist
 
-External URLs, link anchors, and `README.md.template` are not checked. The script
-does not build SDK examples or execute notebooks, containers, or GPU workloads — validate
-runtime behavior by following the tutorial yourself.
+External URLs and link anchors are not checked. The script does not build SDK examples
+or execute notebooks, containers, or GPU workloads. Validate runtime behavior by
+following the tutorial yourself.
 
 ## License
 
