@@ -288,8 +288,8 @@ the module's `.venv` with `source .venv/bin/activate` and omit `uv run`.
 
 Enable the dependency's operators in your build graph, just as in §4.3. To work
 from another directory, place `--project-root /path/to/module` before `build`.
-See [Create a Module](../create-a-module/README.md) for installation and the
-[CLI 5.x guide](../../../modules/cli-5x.md) for configuration precedence and local SDK selection.
+See [Create a Module](../create-a-module/README.md) for installation. For a local
+build, select the SDK explicitly with `--local-sdk-root /path/to/sdk`.
 
 ## 5. Path B — External C++ Project (Binary Install)
 
