@@ -1,6 +1,6 @@
 # Contributing to Holoscan Tutorials
 
-Thanks for helping other developers learn the
+Thank you for helping other developers learn the
 [NVIDIA Holoscan SDK](https://github.com/nvidia-holoscan/holoscan-sdk)! To contribute,
 fork this repository, add or update a directory under `tutorials/`, validate it, and open a
 pull request with signed-off commits:
