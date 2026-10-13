@@ -593,11 +593,11 @@ experimentation, but they are mutable and cannot reproduce a specific source tre
 - Follow the companion [Use a Holoscan Module](../use-a-module/README.md) tutorial to consume the
   source or installed package from HoloHub and standalone applications.
 - Review `modules/holoscan-gstreamer/` when an in-tree HoloHub descriptor is the better fit.
-- [Holoscan CLI 5.x integration guide](../../../modules/cli-5x.md)
+- [Holoscan CLI documentation](https://github.com/nvidia-holoscan/holohub/blob/main/utilities/cli/README.md)
 - Refer to the [Holoscan SDK User Guide](https://docs.nvidia.com/holoscan/sdk-user-guide/introduction/overview)
   for the broader SDK programming model.
-- Read the [HoloHub contributing guide](../../../CONTRIBUTING.md) before proposing an in-tree
-  descriptor or catalog change.
+- Read the [HoloHub contributing guide](https://github.com/nvidia-holoscan/holohub/blob/main/CONTRIBUTING.md)
+  before proposing an in-tree descriptor or catalog change.
 
 You now have the complete producer workflow: scaffold, implement, compile, test, package, inspect,
 and prepare the Module for consumers. Happy Holocoding!
