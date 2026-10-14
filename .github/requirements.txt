@@ -1,2 +1,2 @@
-markdown-it-py==3.0.0
-nbformat==5.11.1
+# Hook dependencies are pinned in .pre-commit-config.yaml.
+pre-commit==4.7.0

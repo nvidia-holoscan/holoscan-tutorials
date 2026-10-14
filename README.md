@@ -101,23 +101,44 @@ When you update an existing tutorial, bump `version` and add a `changelog` entry
 
 ## Validation
 
-Run the CPU-only validation checks from the repository root:
+CI and local commits use the same [pre-commit](https://pre-commit.com/) checks.
+From the repository root, use Python 3.12 (the version used in CI), Git, and `sh`/`bash`
+to set up the CPU-only checks:
 
 ```bash
-python3 -m venv .venv
+python3.12 -m venv .venv
 .venv/bin/python -m pip install -r .github/requirements.txt
-.venv/bin/python .github/validate.py
+.venv/bin/pre-commit install
+.venv/bin/pre-commit run --all-files --show-diff-on-failure
 ```
 
-The script covers this file and everything under `tutorials/`, checking that:
+Pre-commit installs its pinned hook dependencies in isolated environments on the first
+run, which requires network access. Later commits automatically check staged files.
+Whitespace and end-of-file hooks can fix files; review and stage those changes, then
+retry the commit. Markdown's two-space hard line breaks are preserved.
 
-- Python files compile and shell scripts pass `bash -n`
+The hooks check YAML, JSON, and Python syntax; merge conflict markers; private keys;
+and files larger than 5 MiB. JSON checks exclude `.vscode/` files and
+`devcontainer.json`, which permit comments and trailing commas. Keep large datasets
+and generated assets outside Git and document how to obtain them in the tutorial.
+
+The `validate-tutorials` hook also runs [the repository validator](.github/validate.py)
+over this README and everything under `tutorials/`, checking that:
+
+- Python files compile and shell scripts pass `bash -n` (`sh -n` for `nvcc-cross-sbsa`)
 - JSON files are strict JSON — no comments, no trailing commas. `.vscode/` files and
   `devcontainer.json` are excluded, since those formats permit both.
 - Notebooks pass `nbformat` validation
 - Relative Markdown links and image paths point at files that exist
 
-External URLs and link anchors are not checked. The script does not build SDK examples
+The validator runs on every commit, including deletions, so removing a linked file
+cannot silently break an unchanged README. To run only this hook manually:
+
+```bash
+.venv/bin/pre-commit run validate-tutorials --all-files
+```
+
+External URLs and link anchors are not checked. These checks do not build SDK examples
 or execute notebooks, containers, or GPU workloads. Validate runtime behavior by
 following the tutorial yourself.
 
