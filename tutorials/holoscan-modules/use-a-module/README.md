@@ -34,17 +34,13 @@ build time or install a published binary package.
 In this tutorial we use a fictional `holoscan-my-sensor` external Module as the running
 worked example.
 
-> For in-tree Module usage (modules that live inside the HoloHub monorepo rather than as
-> standalone repositories), see
-> [Appendix B](#appendix-b-in-tree-module-dependencies-holohub-subproject).
-
 ### Who consumes a Holoscan Module?
 
 A Holoscan Module is the right dependency to declare when:
 
 - **You are building a library or end-user product** on the Holoscan SDK and need
   and want versioned, supported operators rather than vendored or copy-pasted source.
-- **You are building a HoloHub sample application** that needs hardware-specific or
+- **You are building a Holoscan sample application** that needs hardware-specific or
   domain-specific operators — for example, a robotics application that needs a vendor
   camera driver, or a medical-imaging app that needs an image-reconstruction library.
 - **You are building another Holoscan Module** whose operators depend on operators
@@ -57,14 +53,14 @@ build glue.
 ### Why use a Holoscan Module instead of copy-pasting operators or rolling your own?
 
 1. **Versioned and supported.** The Module's maintainer owns its build, ABI, test,
-   and release. You consume a pinned commit (HoloHub flow) or a pinned package
+   and release. You consume a pinned commit (source build) or a pinned package
    version (binary install) and get bug fixes and SDK-compatibility updates for free.
 2. **Discoverable.** Curated Holoscan Modules may be listed alongside SDK-supported
    and community work on the NVIDIA HoloHub website. Prospective users and their AI
    agents find your dependency choices by searching the Holoscan ecosystem instead of
    guessing repo names. A vendored copy puts the entire burden of discovery on you.
-3. **Drop-in.** The HoloHub resolver fetches and wires Modules into your CMake build
-   automatically for HoloHub-flow consumers. Binary consumers get the same operators
+3. **Drop-in.** The Holoscan CLI reads Module metadata and prepares source declarations
+   for your CMake build (Path A). Binary consumers get the same operators
    via standard `pip install` or `apt install` plus a single `find_package` (C++) or
    `import` (Python). No vendor-specific build glue.
 
@@ -77,18 +73,22 @@ This tutorial covers several approaches to consume a Holoscan Module in your pro
 each path's section below calls out anything extra it needs.
 
 - The target Holoscan Module — its name (e.g., `holoscan-my-sensor`), its source URL
-  or its published binary package name, and either a release commit SHA (HoloHub
-  flow) or a binary package version (install flows).
+  or its published binary package name, and either a release commit SHA (source
+  build) or a binary package version (install flows).
 - **Holoscan SDK >= 4.2.0** matching the Module's
   `metadata.json:module.holoscan_sdk.minimum_required_version`.
 - [Python >=3.12](https://www.python.org/downloads/) for this CLI 5.x walkthrough.
   Binary consumers follow the Python requirements of their SDK and module wheels.
+- For Path A, install the [Holoscan CLI](https://github.com/nvidia-holoscan/holoscan-cli)
+  in the consuming project's development environment. The examples use `holoscan-cli==5.0.0rc1`
+  from NVIDIA's Python index, as in the
+  [Create a Module tutorial](../create-a-module/README.md#32-set-up-the-generated-development-environment).
 
-### Container Approach (Recommended for HoloHub Flow)
+### Container Approach (Recommended for the CLI Workflow)
 
 - [Docker](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository), including the buildx plugin (`docker-buildx-plugin`)
 - the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) (v1.12.2 or later)
-- A local clone of the **HoloHub** repository — the `./holohub` CLI lives there.
+- A local clone of the consuming Holoscan project, with its documented development container.
 
 ### Local Approach (for External C++ / Python / Source-Embedding Flows)
 
@@ -104,32 +104,27 @@ Pick the path that matches your project, then jump to the corresponding section.
 
 | Your project is… | Use… |
 | --- | --- |
-| A HoloHub application, operator, or benchmark | [Path A (§4)](#4-path-a--consume-from-a-holohub-subproject-primary) |
+| A Holoscan application or benchmark using CLI dependency metadata | [Path A (§4)](#4-path-a--consume-from-a-holoscan-project-cli-workflow) |
 | Another Holoscan Module declaring a transitive dependency | [Path A (§4.7)](#47-module-to-module-transitive-dependencies) |
 | A standalone C++ application using a module binary package | [Path B (§5)](#5-path-b--external-c-project-binary-install) |
 | A pure-Python application or notebook | [Path C (§6)](#6-path-c--external-python-project-pip-install) |
 | A standalone C++ project using module sources | [Path D (§7)](#7-path-d--source-level-embedding-in-a-fully-external-project) |
-| A HoloHub subproject driven directly from CMake (no `./holohub` CLI) | [Appendix A](#appendix-a-embed-directly-in-holohub-cmake-handling) |
-| A HoloHub subproject depending on a module within the HoloHub monorepo | [Appendix B](#appendix-b-in-tree-module-dependencies-holohub-subproject) |
 
-## 4. Path A — Consume from a HoloHub Subproject (Primary)
+## 4. Path A — Consume from a Holoscan Project (CLI Workflow)
 
-The canonical flow. The HoloHub CLI's resolver does the work; you just declare the
-dependency.
+Declare the dependency in metadata and integrate the CLI-generated source manifest into your
+project's CMake build. The Holoscan CLI provides the build and discovery commands.
 
-### 4.1 (Optional) Scaffold a HoloHub subproject
+### 4.1 Select a Holoscan project
 
-If you don't already have a subproject, you can use the HoloHub CLI to create one.
-The application template produces metadata ready for a module dependency.
+Work from the root of the repository that consumes the Module. Application examples live in
+[Holoscan Applications](https://github.com/nvidia-holoscan/holoscan-applications), and benchmarks
+live in [Holoscan Benchmarks](https://github.com/nvidia-holoscan/holoscan-benchmarks). To create a
+new reusable component, follow [Create a Holoscan Module](../create-a-module/README.md).
 
-```bash
-./holohub create my_app --template applications/template --dryrun
-./holohub create my_app --template applications/template
-```
-
-The scaffolded subproject ships a `metadata.json` ready for you to add a
-`dependencies.modules[]` block as shown below. Run `./holohub list` to see existing
-subprojects, modules, and operators available in your HoloHub clone.
+Follow the consuming project's README to prepare its SDK and development environment.
+Run `holoscan list` to see projects in that checkout. The examples below assume an application
+named `my_app`; substitute your project's selector and a Module compatible with its SDK.
 
 ### 4.2 Declare the dependency
 
@@ -137,7 +132,7 @@ Edit your subproject's `metadata.json`. For an application:
 
 ```json
 {
-  "$schema": "urn:holohub:application:v2",
+  "$schema": "urn:holoscan:application:v1",
   "application": {
     "name": "my_app",
     "dependencies": {
@@ -156,48 +151,53 @@ Edit your subproject's `metadata.json`. For an application:
 }
 ```
 
-Field reference (from `utilities/metadata/module.schema.json`, `module_dependency`
-definition):
+This excerpt shows the dependency fields; retain the other required fields in your application's
+metadata. Field reference: the `module_dependency` definition in the Holoscan CLI's
+[`module.schema.json`](https://github.com/nvidia-holoscan/holoscan-cli/blob/main/src/holoscan_cli/metadata/module.schema.json).
 
 - **`name`** (required) — Module name as published in its own
   `metadata.json:module.name`.
 - **`source.{git_url, ref}`** — the Module's git URL and a pinned 40-character commit SHA.
-  The resolver warns if `ref` is not a 40-character SHA (mutable tags and branches lose
-  reproducibility).
-- **`provides_operators`** — operators this dep contributes. Used by the resolver for
-  *lazy* fetching: only Modules whose operators are actually enabled (`OP_<name>=ON`)
-  get fetched at build time.
+  CLI `5.0.0rc1` requires an immutable SHA; mutable tags and branches are rejected.
+- **`provides_operators`** — operators this dependency contributes. The generated manifest
+  records their provider; the consuming CMake project controls which Modules are fetched and
+  which operators are enabled (`OP_<name>=ON`), as shown in §4.3.
 - **`version`** (optional) — informational; not enforced by the resolver today.
 
-Those metadata details are used by the HoloHub CLI in the next section.
+Those metadata details are used by the Holoscan CLI in the next section.
 
 ### 4.3 Build
 
-```bash
-./holohub build my_app --dryrun --verbose
-./holohub build my_app
-```
-
-**How it works:** When you run `./holohub build`, two layers of tooling run to
-resolve and lazily fetch any necessary external module sources.
-
-1. The HoloHub CLI scans all `metadata.json` files in the repository to build a metadata database. It reads the `dependencies.modules[]` declarations from your subproject's metadata.
-2. For each external module dependency, the CLI writes a `holohub_declare_external_module(...)` entry into a generated CMake manifest file. This function defines a `FetchContent_Declare`
-entry for each source URL and tag, along with a HoloHub variable detail to note what
-resources the external module provides.
-3. CMake includes the manifest during configuration. If any resources from outside HoloHub
-are requested, the CMake build uses `FetchContent_MakeAvailable` to lazily clone each declared module's source repository. Only modules whose operators are actually enabled in the build are fetched.
-
-The resolver handles `FetchContent` plumbing automatically — you do not write
-`FetchContent_Declare` or `FetchContent_MakeAvailable` calls by hand. Instead, simply
-register the operator as a required or optional dependency for your project in `applications/CMakeLists.txt`:
+The consuming project owns its CMake dependency integration. Make the CLI's bundled
+[`HoloHubConfigHelpers.cmake`](https://github.com/nvidia-holoscan/holoscan-cli/blob/main/src/holoscan_cli/cmake/HoloHubConfigHelpers.cmake)
+available under `cmake/`; generated Modules already include it. In the root `CMakeLists.txt`,
+load the generated manifest and make the required Module available before adding the targets
+or subdirectories that use it. For the dependency above:
 
 ```cmake
-add_holohub_application(my_app DEPENDS OPERATORS my_sensor_op)
+include(FetchContent)
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/HoloHubConfigHelpers.cmake")
+include("${CMAKE_BINARY_DIR}/external_operators_manifest.cmake")
+
+set(OP_my_sensor_op ON CACHE BOOL "Build the sensor operator" FORCE)
+FetchContent_MakeAvailable(holoscan_my_sensor)
 ```
 
-This is what tells CMake which operators to enable (`OP_my_sensor_op=ON`), which in
-turn triggers the manifest's lazy fetch for the module that provides them.
+The helper filename and its `holohub_declare_external_module()` function are the API names
+still shipped by CLI `5.0.0rc1`. The provider name `holoscan_my_sensor` is derived from the
+Module name by replacing characters other than letters, digits, and underscores with underscores.
+
+```bash
+holoscan build my_app --dryrun --verbose
+holoscan build my_app
+```
+
+**How it works:** The Holoscan CLI reads `dependencies.modules[]` from the selected project's
+metadata and writes `external_operators_manifest.cmake` into its build directory before running
+CMake. The manifest declares each Module's source URL and commit. The CMake integration above
+fetches the required Module and enables `my_sensor_op`; link its exported target as shown in §4.5.
+Projects using CMake directly can instead declare the source themselves with
+[Path D](#7-path-d--source-level-embedding-in-a-fully-external-project).
 
 ### 4.4 Iterate against a local working copy
 
@@ -212,10 +212,10 @@ used by the override; forwarding an environment variable does not mount files:
 
 ```bash
 export HOLOSCAN_CLI_LOCAL_HOLOSCAN_MY_SENSOR=/workspace/local-modules/holoscan-my-sensor
-./holohub build my_app --dryrun --verbose \
+holoscan build my_app --dryrun --verbose \
   --docker-opts="-v $HOME/repos/holoscan-my-sensor:/workspace/local-modules/holoscan-my-sensor" \
   --forward-env HOLOSCAN_CLI_LOCAL_HOLOSCAN_MY_SENSOR
-./holohub build my_app \
+holoscan build my_app \
   --docker-opts="-v $HOME/repos/holoscan-my-sensor:/workspace/local-modules/holoscan-my-sensor" \
   --forward-env HOLOSCAN_CLI_LOCAL_HOLOSCAN_MY_SENSOR
 ```
@@ -246,7 +246,7 @@ if __name__ == "__main__":
 ```
 
 C++ application: include the public header the Module installs (path is documented in
-its README) and link via the Module's exported targets in your HoloHub-app
+its README) and link via the Module's exported targets in your application's
 `CMakeLists.txt`:
 
 ```cmake
@@ -256,13 +256,14 @@ target_link_libraries(my_app PRIVATE holoscan::my_sensor_op)
 ### 4.6 Discover what's available
 
 ```bash
-./holohub list   # Lists projects in this checkout
-./holohub list --json
-./holohub status --json
-./holohub env-check --json
+holoscan list   # Lists projects in this checkout
+holoscan list --json
+holoscan status --json
+holoscan env-check --json
 ```
 
-The list is a local project inventory; use the ecosystem Modules page to discover
+The list is a local project inventory; use the
+[HoloHub Modules catalog](https://nvidia-holoscan.github.io/holohub/modules/) to discover
 published projects. JSON output includes `schema_version: 1`. `env-check` can
 exit nonzero when dependencies are missing.
 
@@ -274,8 +275,7 @@ schema as the `application.dependencies.modules[]` shown in §4.2 above. Refer t
 "Create a Holoscan Module" tutorial for the full schema and SHA-pinning discipline,
 and to §4.4 above for mounted-source iteration.
 
-From a standalone module, use the recommended uv environment with Python >=3.12.
-No HoloHub checkout or wrapper is required:
+From a standalone module, use the recommended uv environment with Python >=3.12:
 
 ```bash
 uv run holoscan list --json
@@ -293,8 +293,7 @@ build, select the SDK explicitly with `--local-sdk-root /path/to/sdk`.
 
 ## 5. Path B — External C++ Project (Binary Install)
 
-Projects that live outside HoloHub can easily consume external module binaries
-like any other binary package.
+Standalone Holoscan projects can consume Module binaries like any other binary package.
 
 ### 5.1 Install the binary
 
@@ -323,10 +322,8 @@ target_link_libraries(my_app PRIVATE
 
 Modules are responsible for shipping a CMake package config — for example,
 `/usr/lib/<triplet>/cmake/holoscan-my-sensor/holoscan-my-sensor-config.cmake` — that
-exports targets under the `holoscan::` namespace. For a working reference, see
-`operators/gstreamer/cmake/holoscan-gstreamer-config.cmake.in` and the
-`find_package(holoscan-gstreamer)` install-tree test under
-`operators/gstreamer/tests/cmake/test_find_package/`.
+exports targets under the `holoscan::` namespace. Consult the Module's repository for its
+exported targets and package-consumption examples.
 
 If the package is not found, ensure the install prefix is on `CMAKE_PREFIX_PATH`, or
 that you installed via the system package manager into a default-searched prefix
@@ -372,7 +369,7 @@ single import is enough.
 
 ## 7. Path D — Source-Level Embedding in a Fully External Project
 
-Projects that rely directly on CMake without HoloHub CLI tooling can leverage
+Projects that rely directly on CMake without Holoscan CLI tooling can use
 CMake's [`FetchContent`](<https://cmake.org/cmake/help/latest/module/FetchContent.html>) function to fetch and build open-source Holoscan Modules
 directly.
 
@@ -395,19 +392,19 @@ and best practices. A binary install (Paths B and C) is usually a simpler choice
 
 | Goal | Where or what |
 | --- | --- |
-| Declare a Module dep (HoloHub app) | `metadata.json:application.dependencies.modules[]` |
+| Declare a Module dep (Holoscan app) | `metadata.json:application.dependencies.modules[]` |
 | Declare a transitive dep (Module → Module) | `metadata.json:module.dependencies[]` |
 | External Module reference | Include `source.{git_url, ref}` (40-char SHA) and `provides_operators` |
 | Local override | `HOLOSCAN_CLI_LOCAL_<SANITIZED_MODULE_NAME>=<container-path>` env var |
-| Build a HoloHub subproject with deps | `./holohub build <app>` |
+| Build a Holoscan project with deps | `holoscan build <app>` |
 | Install binary (C++) | `apt install holoscan-<name>` |
 | Install binary (Python) | `pip install holoscan-<name>` |
 | Use from C++ | `find_package(holoscan-<name> REQUIRED)` + `target_link_libraries(... holoscan::<target>)` |
 | Use from Python | `from holoscan.my_module import MyOp` (substitute your Module name) |
-| Embed via source — HoloHub tree, CMake-direct (Appendix A) | `holohub_declare_external_module(...)` + `add_holohub_application(... DEPENDS OPERATORS …)` — root build's post-step fetches |
+| Use CLI-declared sources (Path A) | Include the generated manifest and call `FetchContent_MakeAvailable(...)` in the consuming CMake project |
 | Embed via source — fully external (Path D) | `FetchContent_Declare(...)` + `FetchContent_MakeAvailable(...)` |
 | Inspect a standalone Module | `holoscan --project-root /path/to/module list --json` |
-| Discover HoloHub Modules | `./holohub list --json` |
+| Discover published Holoscan Modules | [HoloHub Modules catalog](https://nvidia-holoscan.github.io/holohub/modules/) |
 
 ## 9. Troubleshooting
 
@@ -417,7 +414,7 @@ and best practices. A binary install (Paths B and C) is usually a simpler choice
 - **`import holoscan.my_sensor` raises `ModuleNotFoundError`.** Check that
   `pip show holoscan-my-sensor` succeeds in the same Python environment, and that the
   Holoscan SDK wheel is installed in that same env.
-- **Resolver warns "ref is not a 40-character commit SHA".** Replace the tag or branch
+- **Resolver rejects a ref that is not a 40-character commit SHA.** Replace the tag or branch
   in `source.ref` with the commit SHA it resolves to.
 - **`HOLOSCAN_CLI_LOCAL_*` override has no effect.** Derive the suffix from the
   dependency `name` as described in §4.4, mount the Module into the project
@@ -425,110 +422,18 @@ and best practices. A binary install (Paths B and C) is usually a simpler choice
   the variable must contain the mounted container path.
 - **The operator is not built even though you declared it.** Under FetchContent +
   `PROJECT_IS_TOP_LEVEL` defaults, the Module's `BUILD_ALL` is `OFF`, so only the
-  operators marked with `OP_<op>=ON` get built. In a HoloHub tree (Path A or
-  [Appendix A](#appendix-a-embed-directly-in-holohub-cmake-handling)),
-  list the operator in `add_holohub_application(... DEPENDS OPERATORS …)` — the
-  helper sets the flag for you. In a fully external CMake build (Path D), pass
+  operators marked with `OP_<op>=ON` get built. In either source-build path (A or D), pass
   `-DOP_<op>=ON` on the configure line or `set(...)` it before
   `FetchContent_MakeAvailable`.
-- **HoloHub build fails with "No content recorded" inside
+- **CMake fails with "No content recorded" inside
   `FetchContent_MakeAvailable`.** The external operators manifest is stale. Delete
-  `build/external_operators_manifest.cmake` and reconfigure; the resolver regenerates
-  it on each build.
+  `external_operators_manifest.cmake` from the selected project's build directory and rebuild
+  with `holoscan build <app>`; the resolver regenerates it. Confirm the root `CMakeLists.txt`
+  includes that manifest before calling `FetchContent_MakeAvailable`.
 
 ## 10. Next Steps
 
-For the full CLI reference, see `utilities/cli/cli_reference.md`.
+For the full [Holoscan CLI reference](https://github.com/nvidia-holoscan/holoscan-cli/blob/main/CLI_REFERENCE.md),
+visit the Holoscan CLI repository.
 
 Happy holocoding!
-
----
-
-## Appendix A: Embed directly in HoloHub CMake handling
-
-For developers working inside a HoloHub subproject who need to declare a Module
-dependency from CMake directly, bypassing the `./holohub` CLI / `metadata.json` flow
-of Path A. This approach is documented for advanced edge cases only; most users should favor
-Path A with HoloHub CLI tooling when contributing to HoloHub.
-
-Reuse HoloHub's existing CMake helpers — `holohub_declare_external_module()` and
-`add_holohub_application()` — from your subproject's `CMakeLists.txt`. Together they
-register the FetchContent declaration, record the operator-to-provider mapping
-(`HOLOHUB_EXT_OP_<op>_PROVIDER`), and force-enable the operators your application
-needs. You should not call `FetchContent_MakeAvailable` yourself: the HoloHub root
-`CMakeLists.txt` has a post-step that walks the `*_PROVIDER` variables and calls
-`FetchContent_MakeAvailable` once per provider whose operators are enabled.
-
-```cmake
-# Somewhere in your HoloHub subproject's CMakeLists.txt
-holohub_declare_external_module(holoscan_my_sensor
-    GIT_REPOSITORY https://github.com/example/holoscan-my-sensor.git
-    GIT_TAG        0123456789abcdef0123456789abcdef01234567
-    PROVIDES_OPERATORS my_sensor_op
-)
-
-# add_holohub_application implicitly force-enables OP_<op>=ON for every operator
-# listed under DEPENDS OPERATORS — you should not set those cache variables yourself.
-add_holohub_application(my_app DEPENDS OPERATORS my_sensor_op)
-```
-
-The actual link against the Module's exported target goes in your application's
-subdirectory `CMakeLists.txt` (the file `add_holohub_application` adds via
-`add_subdirectory(my_app)`):
-
-```cmake
-# my_app/CMakeLists.txt
-add_executable(my_app main.cpp)
-target_link_libraries(my_app PRIVATE holoscan::my_sensor_op)
-```
-
-Notes:
-
-- The first positional argument to `holohub_declare_external_module` is a
-  CMake-identifier-safe provider id (hyphens are replaced with underscores by
-  convention). The remaining keyword args (`GIT_REPOSITORY`, `GIT_TAG`, etc.) are
-  forwarded to `FetchContent_Declare`.
-- The Module's generated root `CMakeLists.txt` detects nested builds via
-  `PROJECT_IS_TOP_LEVEL` and defaults `BUILD_ALL=OFF`; only the operators you list
-  in `add_holohub_application(... DEPENDS OPERATORS …)` are built. Tests are
-  similarly off by default (`<MODULE_NAME>_BUILD_TESTING=OFF`).
-- Compared to Path A (the CLI-driven flow), this path is equivalent in build
-  output — the CLI's resolver emits the same `holohub_declare_external_module(...)`
-  call into a generated manifest. Choose Path A if you want declarative metadata
-  and the rest of the CLI's lifecycle commands; choose this path if you want the
-  dependency expressed directly in CMake.
-
----
-
-## Appendix B: In-tree Module Dependencies (HoloHub Subproject)
-
-An **in-tree Module** is a thin descriptor inside the HoloHub monorepo whose operator
-sources live in `operators/<name>/` rather than a separate git repository. See
-`modules/holoscan-gstreamer/` for the canonical reference. *This path is documented
-primarily for legacy operator contributions and is not recommended for most new
-operator contributions.*
-
-To consume an in-tree Module from a HoloHub subproject (Path A), omit the `source` block
-in `metadata.json`. The resolver looks the Module up under `modules/<name>/metadata.json`
-and uses the in-tree sources directly.
-
-```json
-{
-  "application": {
-    "name": "my_app",
-    "dependencies": {
-      "modules": [
-        { "name": "holoscan-gstreamer", "provides_operators": ["gstreamer"] }
-      ]
-    }
-  }
-}
-```
-
-The `source.{git_url, ref}` field is required only for external Modules; omit it entirely
-for in-tree Modules. Everything else — the build command (`./holohub build my_app`), the
-local-override mechanism (`HOLOSCAN_CLI_LOCAL_*`), and the operator import — is identical
-to the external-Module flow in Path A.
-
-See `modules/holoscan-gstreamer/metadata.json` for a live in-tree Module you can add as
-a dependency to verify your tooling end-to-end.
