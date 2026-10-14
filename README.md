@@ -57,7 +57,7 @@ your tutorial and audience. You may combine or omit sections, or add others wher
 | Acknowledgements | Credits for collaborators and references to methods or resources used |
 
 Keep setup and runtime requirements in the tutorial, and ensure all relative links point
-to existing files or directories. The validation script checks these local links.
+to existing files or directories. The Lychee pre-commit hook checks these local links.
 
 ### `metadata.json`
 
@@ -102,7 +102,7 @@ When you update an existing tutorial, bump `version` and add a `changelog` entry
 ## Validation
 
 CI and local commits use the same [pre-commit](https://pre-commit.com/) checks.
-From the repository root, use Python 3.12 (the version used in CI), Git, and `sh`/`bash`
+From the repository root, use Python 3.12 (the version used in CI), Git, Bash, and `curl`
 to set up the CPU-only checks:
 
 ```bash
@@ -112,35 +112,39 @@ python3.12 -m venv .venv
 .venv/bin/pre-commit run --all-files --show-diff-on-failure
 ```
 
-Pre-commit installs its pinned hook dependencies in isolated environments on the first
-run, which requires network access. Later commits automatically check staged files.
+Pre-commit installs its pinned hook dependencies and downloads the ShellCheck and
+Lychee binaries on the first run, which requires network access. Later commits
+automatically check staged files.
 Whitespace and end-of-file hooks can fix files; review and stage those changes, then
 retry the commit. Markdown's two-space hard line breaks are preserved.
 
-The hooks check YAML, JSON, and Python syntax; merge conflict markers; private keys;
+The hooks check YAML and JSON syntax; merge conflict markers; private keys;
 and files larger than 5 MiB. JSON checks exclude `.vscode/` files and
 `devcontainer.json`, which permit comments and trailing commas. Keep large datasets
 and generated assets outside Git and document how to obtain them in the tutorial.
 
-The `validate-tutorials` hook also runs [the repository validator](.github/validate.py)
-over this README and everything under `tutorials/`, checking that:
+Additional hooks validate sources and documentation:
 
-- Python files compile and shell scripts pass `bash -n` (`sh -n` for `nvcc-cross-sbsa`)
-- JSON files are strict JSON — no comments, no trailing commas. `.vscode/` files and
-  `devcontainer.json` are excluded, since those formats permit both.
-- Notebooks pass `nbformat` validation
-- Relative Markdown links and image paths point at files that exist
+- `check-python-compile` uses Python's built-in `py_compile` to check compilation
+  without running the source. It may create ignored `__pycache__/` files.
+- [ShellCheck](https://github.com/shellcheck-py/shellcheck-py) checks shell syntax and
+  common mistakes, using each script's shebang to select its shell dialect.
+- [nbcheck](https://github.com/furechan/nbcheck) validates notebook structure using
+  `nbformat`, without executing cells or changing their outputs.
+- [Lychee](https://github.com/lycheeverse/lychee) checks local Markdown links and image
+  paths in this README and all Markdown files under `tutorials/`. Paths beginning
+  with `/` resolve from the repository root.
 
-The validator runs on every commit, including deletions, so removing a linked file
-cannot silently break an unchanged README. To run only this hook manually:
+Lychee runs on every commit, including deletions, so removing a linked file cannot
+silently break an unchanged README. To run only this hook manually:
 
 ```bash
-.venv/bin/pre-commit run validate-tutorials --all-files
+.venv/bin/pre-commit run lychee --all-files
 ```
 
-External URLs and link anchors are not checked. These checks do not build SDK examples
-or execute notebooks, containers, or GPU workloads. Validate runtime behavior by
-following the tutorial yourself.
+Lychee runs offline; external URLs and link anchors are not checked. These hooks do
+not build SDK examples or execute notebooks, containers, or GPU workloads. Validate
+runtime behavior by following the tutorial yourself.
 
 ## License
 

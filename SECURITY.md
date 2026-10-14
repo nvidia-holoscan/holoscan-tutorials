@@ -36,8 +36,8 @@ Holoscan Tutorials is documentation and sample code for the NVIDIA Holoscan SDK.
 Each directory under `tutorials/` is a self-contained walkthrough: a `README.md`,
 a `metadata.json` descriptor, and the sources, notebooks, scripts, or container
 files needed to follow that topic. There is no repository-wide service, package,
-or installer. `.github/validate.py` only syntax-checks sources and local
-Markdown links.
+or installer. Pre-commit hooks check source syntax, notebook structure, file
+hygiene, and local Markdown links without executing tutorial code.
 
 This project operates at the tutorial and sample-application level. Its primary
 security responsibility is to keep the commands and samples a reader runs inside
@@ -94,8 +94,9 @@ The principal security boundaries are:
   `--ipc=host`, `--cap-add=CAP_SYS_PTRACE`, and `xhost +local:docker`.
 - GitHub Actions (`.github/workflows/ci.yml`) checks out the repo with
   `persist-credentials: false` and `contents: read`, installs the pinned
-  `.github/requirements.txt`, and runs `validate.py`. That job does not build
-  images or execute tutorials.
+  `.github/requirements.txt`, and runs the hooks in `.pre-commit-config.yaml`
+  against all tracked files. The Lychee hook also scans the root README and
+  tutorial Markdown on every run. That job does not build images or execute tutorials.
 
 ### Threat Model
 
@@ -166,8 +167,9 @@ The principal security boundaries are:
   credentials.
 - Third-party Python, apt, and container packages are installed by the reader
   while following a tutorial. They are not vendored in this source tree.
-- `validate.py` compiles and syntax-checks tutorial files. It does not execute
-  them, build containers, or contact external URLs.
+- Pre-commit hooks compile and syntax-check tutorial files without executing
+  them or building containers. Lychee checks local links offline; installing
+  the hook dependencies and binaries requires network access.
 
 ## Dependency and Distribution Security
 

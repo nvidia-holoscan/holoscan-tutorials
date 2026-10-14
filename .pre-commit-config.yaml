@@ -14,21 +14,47 @@ repos:
       - id: check-json
         # These editor configurations permit comments and trailing commas.
         exclude: '(^|/)(\.vscode/|devcontainer\.json$)'
-      - id: check-ast
       - id: detect-private-key
       - id: check-added-large-files
         # Check the same 5 MiB limit locally and in CI, including existing files.
         args: [--maxkb=5120, --enforce-all]
 
-  - repo: local
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: a6564f5d57444e123433a5c9af733e3975c77229 # frozen: v0.11.0.1-1
     hooks:
-      - id: validate-tutorials
-        name: Validate tutorial sources, notebooks, and local links
-        entry: python .github/validate.py
-        language: python
-        additional_dependencies:
-          - markdown-it-py==3.0.0
-          - nbformat==5.11.1
-        # A deleted/renamed asset can break links in otherwise unchanged Markdown.
+      - id: shellcheck
+
+  - repo: https://github.com/lycheeverse/lychee
+    rev: 2bba271688c1abb1503097a064e6c3bc1d1b6a9b # frozen: lychee-v0.24.2
+    hooks:
+      - id: lychee
+        name: Check local Markdown links
+        args:
+          - LYCHEE_VERSION=0.24.2
+          - --offline
+          - --hidden
+          - --no-progress
+          - --include-fragments=none
+          - --root-dir=.
+          - README.md
+          - tutorials/**/*.md
+        # Deleting an asset can break links in otherwise unchanged Markdown.
         always_run: true
         pass_filenames: false
+
+  - repo: local
+    hooks:
+      - id: check-python-compile
+        name: Check Python compilation
+        entry: python -m py_compile
+        language: python
+        types: [python]
+      - id: nbcheck
+        name: Validate notebook format
+        entry: nbcheck
+        args: [--verbose]
+        language: python
+        types: [jupyter]
+        additional_dependencies:
+          - nbcheck==0.0.5
+          - nbformat==5.11.1
