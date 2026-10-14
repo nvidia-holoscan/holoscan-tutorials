@@ -101,7 +101,7 @@ Start in the directory that will contain the new repository. Pass the friendly, 
 write anything to disk, let's preview exactly what the CLI plans to create:
 
 ```bash
-uvx --index https://pypi.nvidia.com \
+uvx --python 3.12 --index https://pypi.nvidia.com \
   --from 'holoscan-cli[create]==5.0.0rc1' \
   holoscan create my-module \
   --language cpp \
@@ -109,7 +109,7 @@ uvx --index https://pypi.nvidia.com \
   --context holoscan_version=5.0.0 \
   --dryrun
 
-uvx --index https://pypi.nvidia.com \
+uvx --python 3.12 --index https://pypi.nvidia.com \
   --from 'holoscan-cli[create]==5.0.0rc1' \
   holoscan create my-module \
   --language cpp \
@@ -151,10 +151,8 @@ Now that the repository exists, let's set up its development tools. The generate
 host and container commands on the same version. With uv:
 
 ```bash
-uv sync --only-dev
-source .venv/bin/activate
-holoscan version --json
-holoscan list --json
+uv run holoscan version --json
+uv run holoscan list --json
 ```
 
 The generated project sends only the CLI development dependency to NVIDIA's Python index and
@@ -173,7 +171,7 @@ holoscan version --json
 holoscan list --json
 ```
 
-In later shells, reactivate `.venv` before using `holoscan`. No HoloHub checkout or copied
+In later shells, prefix commands with `uv run`, or reactivate `.venv` if you used pip. No HoloHub checkout or copied
 `./holohub` wrapper is needed in a standalone Module.
 
 ### 3.3 Inspect the generated tree
