@@ -81,8 +81,8 @@ each path's section below calls out anything extra it needs.
   flow) or a binary package version (install flows).
 - **Holoscan SDK >= 4.2.0** matching the Module's
   `metadata.json:module.holoscan_sdk.minimum_required_version`.
-- [Python >= 3.10](https://www.python.org/downloads/) on the host machine to run the
-  `holohub` script or your Python application.
+- [Python >=3.12](https://www.python.org/downloads/) for this CLI 5.x walkthrough.
+  Binary consumers follow the Python requirements of their SDK and module wheels.
 
 ### Container Approach (Recommended for HoloHub Flow)
 
@@ -123,6 +123,7 @@ If you don't already have a subproject, you can use the HoloHub CLI to create on
 The application template produces metadata ready for a module dependency.
 
 ```bash
+./holohub create my_app --template applications/template --dryrun
 ./holohub create my_app --template applications/template
 ```
 
@@ -173,6 +174,7 @@ Those metadata details are used by the HoloHub CLI in the next section.
 ### 4.3 Build
 
 ```bash
+./holohub build my_app --dryrun --verbose
 ./holohub build my_app
 ```
 
@@ -205,12 +207,24 @@ dependency's `name` with underscores, trim leading and trailing underscores, and
 uppercase the result. For `holoscan-my-sensor`, use
 `HOLOSCAN_CLI_LOCAL_HOLOSCAN_MY_SENSOR`.
 
-This is an advanced mounted-source workflow. A host export is not automatically
-forwarded into the project container, so mount the working tree and set the override
-inside the container to its mounted path. See the
-[mounted-source iteration guidance](https://github.com/nvidia-holoscan/holohub/blob/main/skills/holohub-module-lifecycle/references/module-consumer-packaging.md#mounted-source-iteration)
-for the safe preview and action sequence. While the override is set, the resolver
-uses the working tree instead of `source.ref`.
+CLI 5.x can forward this override by name. Mount the working copy at the path
+used by the override; forwarding an environment variable does not mount files:
+
+```bash
+export HOLOSCAN_CLI_LOCAL_HOLOSCAN_MY_SENSOR=/workspace/local-modules/holoscan-my-sensor
+./holohub build my_app --dryrun --verbose \
+  --docker-opts="-v $HOME/repos/holoscan-my-sensor:/workspace/local-modules/holoscan-my-sensor" \
+  --forward-env HOLOSCAN_CLI_LOCAL_HOLOSCAN_MY_SENSOR
+./holohub build my_app \
+  --docker-opts="-v $HOME/repos/holoscan-my-sensor:/workspace/local-modules/holoscan-my-sensor" \
+  --forward-env HOLOSCAN_CLI_LOCAL_HOLOSCAN_MY_SENSOR
+```
+
+While the override is set, the resolver uses that working tree instead of
+`source.ref`. For native `--local` builds, set the variable to the host path.
+Unset it to return to the pinned dependency. Standalone modules use the same
+options with `holoscan build <app>` and can persist the variable name in
+`tool.holoscan.forward-env`; keep machine-specific mount paths on the command line.
 
 ### 4.5 Use the operators in your code
 
@@ -242,8 +256,15 @@ target_link_libraries(my_app PRIVATE holoscan::my_sensor_op)
 ### 4.6 Discover what's available
 
 ```bash
-./holohub list   # MODULES: section lists each Module's name, language, operators
+./holohub list   # Lists projects in this checkout
+./holohub list --json
+./holohub status --json
+./holohub env-check --json
 ```
+
+The list is a local project inventory; use the ecosystem Modules page to discover
+published projects. JSON output includes `schema_version: 1`. `env-check` can
+exit nonzero when dependencies are missing.
 
 ### 4.7 Module-to-module (transitive) dependencies
 
@@ -252,6 +273,23 @@ If you are building a Holoscan Module that itself depends on another Module, use
 schema as the `application.dependencies.modules[]` shown in §4.2 above. Refer to the
 "Create a Holoscan Module" tutorial for the full schema and SHA-pinning discipline,
 and to §4.4 above for mounted-source iteration.
+
+From a standalone module, use the recommended uv environment with Python >=3.12.
+No HoloHub checkout or wrapper is required:
+
+```bash
+uv run holoscan list --json
+uv run holoscan build my_sensor_pipeline --dryrun --verbose
+uv run holoscan build my_sensor_pipeline
+```
+
+For the [pip fallback](../create-a-module/README.md#32-set-up-the-generated-development-environment), activate
+the module's `.venv` with `source .venv/bin/activate` and omit `uv run`.
+
+Enable the dependency's operators in your build graph, just as in §4.3. To work
+from another directory, place `--project-root /path/to/module` before `build`.
+See [Create a Module](../create-a-module/README.md) for installation. For a local
+build, select the SDK explicitly with `--local-sdk-root /path/to/sdk`.
 
 ## 5. Path B — External C++ Project (Binary Install)
 
@@ -368,7 +406,8 @@ and best practices. A binary install (Paths B and C) is usually a simpler choice
 | Use from Python | `from holoscan.my_module import MyOp` (substitute your Module name) |
 | Embed via source — HoloHub tree, CMake-direct (Appendix A) | `holohub_declare_external_module(...)` + `add_holohub_application(... DEPENDS OPERATORS …)` — root build's post-step fetches |
 | Embed via source — fully external (Path D) | `FetchContent_Declare(...)` + `FetchContent_MakeAvailable(...)` |
-| Discover Modules | `./holohub list` |
+| Inspect a standalone Module | `holoscan --project-root /path/to/module list --json` |
+| Discover HoloHub Modules | `./holohub list --json` |
 
 ## 9. Troubleshooting
 
@@ -382,8 +421,8 @@ and best practices. A binary install (Paths B and C) is usually a simpler choice
   in `source.ref` with the commit SHA it resolves to.
 - **`HOLOSCAN_CLI_LOCAL_*` override has no effect.** Derive the suffix from the
   dependency `name` as described in §4.4, mount the Module into the project
-  container, and set the variable there to the container path. A host-only export is
-  not automatically forwarded.
+  container, and set the variable there to the container path. Add `--forward-env HOLOSCAN_CLI_LOCAL_<NAME>` to forward the export;
+  the variable must contain the mounted container path.
 - **The operator is not built even though you declared it.** Under FetchContent +
   `PROJECT_IS_TOP_LEVEL` defaults, the Module's `BUILD_ALL` is `OFF`, so only the
   operators marked with `OP_<op>=ON` get built. In a HoloHub tree (Path A or
