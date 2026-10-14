@@ -279,11 +279,11 @@ No HoloHub checkout or wrapper is required:
 
 ```bash
 uv run holoscan list --json
-uv run holoscan build my_module_pipeline --dryrun --verbose
-uv run holoscan build my_module_pipeline
+uv run holoscan build my_sensor_pipeline --dryrun --verbose
+uv run holoscan build my_sensor_pipeline
 ```
 
-For the [pip fallback](../create-a-module/README.md#fallback-venv-with-pip), activate
+For the [pip fallback](../create-a-module/README.md#32-set-up-the-generated-development-environment), activate
 the module's `.venv` with `source .venv/bin/activate` and omit `uv run`.
 
 Enable the dependency's operators in your build graph, just as in §4.3. To work
