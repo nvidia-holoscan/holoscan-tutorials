@@ -1,0 +1,34 @@
+default_language_version:
+  python: python3.12
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c # frozen: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+        args: [--assume-in-merge]
+      - id: check-yaml
+      - id: check-json
+        # These editor configurations permit comments and trailing commas.
+        exclude: '(^|/)(\.vscode/|devcontainer\.json$)'
+      - id: check-ast
+      - id: detect-private-key
+      - id: check-added-large-files
+        # Check the same 5 MiB limit locally and in CI, including existing files.
+        args: [--maxkb=5120, --enforce-all]
+
+  - repo: local
+    hooks:
+      - id: validate-tutorials
+        name: Validate tutorial sources, notebooks, and local links
+        entry: python .github/validate.py
+        language: python
+        additional_dependencies:
+          - markdown-it-py==3.0.0
+          - nbformat==5.11.1
+        # A deleted/renamed asset can break links in otherwise unchanged Markdown.
+        always_run: true
+        pass_filenames: false
