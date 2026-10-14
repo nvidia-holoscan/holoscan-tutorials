@@ -9,19 +9,16 @@
 				"affiliation": "NVIDIA"
 			}
 		],
-		"language": "Python",
-		"version": "0.1.0",
+		"language": "C++",
+		"version": "0.2.0",
 		"changelog": {
+			"0.2.0": "Update the standalone Module workflow for the Holoscan SDK 5.0 C++ API and Debian packaging",
 			"0.1.0": "Initial release"
 		},
 		"holoscan_sdk": {
-			"minimum_required_version": "4.2.0",
+			"minimum_required_version": "5.0.0",
 			"tested_versions": [
-				"4.2.0",
-				"4.3.0",
-				"4.4.0",
-				"4.5.0",
-				"4.6.0"
+				"5.0.0"
 			]
 		},
 		"platforms": [
