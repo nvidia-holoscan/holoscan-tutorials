@@ -27,10 +27,9 @@ artifact is a Debian package.
 
 The examples use the released CLI preview `5.0.0rc1` from NVIDIA's Python index because that is the
 version pinned by the current SDK 5 template. CLI and SDK versions are independent: the scaffold
-uses CLI `5.0.0rc1` while requiring SDK `5.0.0` or later. Use `holoscan` in standalone Module
-repositories and `./holohub` inside HoloHub. See the
-[Holoscan CLI documentation](https://github.com/nvidia-holoscan/holohub/blob/main/utilities/cli/README.md)
-for wrapper configuration and integration details.
+uses CLI `5.0.0rc1` while requiring SDK `5.0.0` or later. See the
+[Holoscan CLI documentation](https://github.com/nvidia-holoscan/holoscan-cli)
+for configuration and integration details.
 
-Each tutorial includes concepts, commands, troubleshooting, and links to the relevant SDK and
-HoloHub references.
+Each tutorial includes concepts, commands, troubleshooting, and links to the relevant Holoscan SDK
+and CLI references.

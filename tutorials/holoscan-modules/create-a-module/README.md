@@ -27,12 +27,8 @@ A Module is a good fit when the implementation should be reused across applicati
 on its own release schedule, or installed as a binary dependency. An ordinary application that
 is not a reusable library does not need to become a Module.
 
-There are two layouts:
-
-- **Standalone Module** — an independent `holoscan-<name>` repository with its own build, tests,
-  package, and CI. This is the primary workflow in this tutorial.
-- **HoloHub-hosted Module** — a descriptor under HoloHub's `modules/` directory for code maintained
-  in HoloHub. See [Section 5](#5-holohub-hosted-modules).
+This tutorial creates a **standalone Module**: an independent `holoscan-<name>` repository with
+its own build, tests, package, and CI.
 
 The SDK 5.0 scaffold is C++-first. It does not generate Python operators, bindings, editable-import
 hooks, or wheels; those workflows are outside the scope of the current template.
@@ -92,7 +88,7 @@ explicitly selects SDK `5.0.0`.
 
 We'll use the packaged template to create `holoscan-my-module`, a fictional standalone Module
 repository. It can live on GitHub, GitLab, or another source host; consumers only need its
-published package or immutable source location. A HoloHub checkout is not required.
+published package or immutable source location.
 
 ### 3.1 Preview and generate the project
 
@@ -171,8 +167,7 @@ holoscan version --json
 holoscan list --json
 ```
 
-In later shells, prefix commands with `uv run`, or reactivate `.venv` if you used pip. No HoloHub checkout or copied
-`./holohub` wrapper is needed in a standalone Module.
+In later shells, prefix commands with `uv run`, or reactivate `.venv` if you used pip.
 
 ### 3.3 Inspect the generated tree
 
@@ -188,7 +183,7 @@ holoscan-my-module/
 ├── Dockerfile                    # SDK 5.0 CUDA 13 development image
 ├── README.md
 ├── DEVELOPER.md
-├── cmake/                        # HoloHub CMake helpers copied by the CLI
+├── cmake/                        # CMake helpers bundled with the Holoscan CLI
 ├── operators/
 │   └── my_module_op/
 │       ├── metadata.json
@@ -421,8 +416,8 @@ external source to an immutable full commit SHA:
 }
 ```
 
-Tags and branches are accepted with a warning, but their contents can move after a successful
-build. A full SHA lets a teammate or CI runner resolve the same source later. The
+CLI `5.0.0rc1` requires a full commit SHA; mutable tags and branches are rejected. A full SHA
+lets a teammate or CI runner resolve the same source later. The
 [Use a Module tutorial](../use-a-module/README.md) shows how to override that pin with a local
 checkout during development without weakening the committed dependency.
 
@@ -504,26 +499,7 @@ The repository may be public or private—the scaffold does not require a partic
 If you want the wider Holoscan community to discover a public Module, coordinate with HoloHub
 maintainers about the appropriate catalog or pointer entry after the release artifacts are ready.
 
-## 5. HoloHub-hosted Modules
-
-The standalone repository we built is the right choice when a Module has its own maintainers and
-release cadence. Sometimes, however, the operators and demos already live in HoloHub and should
-continue to evolve with it. In that case, use an in-tree descriptor rather than copying the code
-into a second repository.
-
-Start by inspecting `modules/holoscan-gstreamer/` and the Module metadata schema. A descriptor may
-add:
-
-- `modules/<module-name>/metadata.json`
-- any Module-specific `pyproject.toml` or Dockerfile that is genuinely required
-- operator and demo registrations pointing to existing HoloHub projects
-
-The descriptor groups existing HoloHub projects; it is not another copy of the standalone
-scaffold. Do not restore the retired `modules/template` tree. Inside HoloHub, use `./holohub`,
-preview supported mutating commands, and test each declared operator and demo explicitly. Ask the
-maintainers before changing metadata schemas, shared Dockerfiles, or CMake registration macros.
-
-## 6. Reference Card
+## 5. Reference Card
 
 Once you are familiar with the workflow, use this table as a quick reminder:
 
@@ -538,7 +514,7 @@ Once you are familiar with the workflow, use this table as a quick reminder:
 | Package | `holoscan package holoscan-<name> --pkg-generator DEB` |
 | Use an explicit root | `holoscan --project-root /path/to/module <command>` |
 
-## 7. Troubleshooting
+## 6. Troubleshooting
 
 ### The CLI rejects Python or WHEEL
 
@@ -581,21 +557,22 @@ Compare `holoscan version --json`, the installed command's `--help`, and the pin
 `requirements-cli.txt` and `pyproject.toml`. Keep the host, container, and development-group pins
 synchronized when moving to a supported replacement.
 
-### A dependency resolver warns about `ref`
+### A dependency resolver rejects `ref`
 
 Pin the dependency to a full 40-character commit SHA. Tags and branches can be convenient during
 experimentation, but they are mutable and cannot reproduce a specific source tree reliably.
 
-## 8. Next Steps
+## 7. Next Steps
 
 - Follow the companion [Use a Holoscan Module](../use-a-module/README.md) tutorial to consume the
-  source or installed package from HoloHub and standalone applications.
-- Review `modules/holoscan-gstreamer/` when an in-tree HoloHub descriptor is the better fit.
-- [Holoscan CLI documentation](https://github.com/nvidia-holoscan/holohub/blob/main/utilities/cli/README.md)
+  source or installed package in your Holoscan applications.
+- Browse [Holoscan Applications](https://github.com/nvidia-holoscan/holoscan-applications)
+  for application examples.
+- [Holoscan CLI documentation](https://github.com/nvidia-holoscan/holoscan-cli)
 - Refer to the [Holoscan SDK User Guide](https://docs.nvidia.com/holoscan/sdk-user-guide/introduction/overview)
   for the broader SDK programming model.
 - Read the [HoloHub contributing guide](https://github.com/nvidia-holoscan/holohub/blob/main/CONTRIBUTING.md)
-  before proposing an in-tree descriptor or catalog change.
+  before proposing a catalog entry for your published Module.
 
 You now have the complete producer workflow: scaffold, implement, compile, test, package, inspect,
 and prepare the Module for consumers. Happy Holocoding!
