@@ -1,9 +1,9 @@
 # Tutorial: Create a Holoscan Module
 
-In this tutorial, we'll create a standalone C++ **Holoscan Module** for Holoscan SDK 5.0. We'll
-start with an empty directory, build a reusable operator, connect it to a finite example graph,
-exercise it with deterministic tests, and finish with a Debian package that another Holoscan
-project can install.
+In this tutorial, we'll create a standalone **Holoscan Module** for Holoscan SDK 5.0. We'll
+start with an empty directory, build a reusable C++ operator, connect it to a finite example graph,
+optionally call it from Python, exercise it with deterministic tests, and finish with a Debian
+package that another Holoscan project can install.
 
 By the end, you'll have an independently versioned repository and a repeatable development
 workflow—not just a collection of source files.
@@ -30,8 +30,9 @@ is not a reusable library does not need to become a Module.
 This tutorial creates a **standalone Module**: an independent `holoscan-<name>` repository with
 its own build, tests, package, and CI.
 
-The SDK 5.0 scaffold is C++-first. It does not generate Python operators, bindings, editable-import
-hooks, or wheels; those workflows are outside the scope of the current template.
+In SDK 5.0, Module operators are implemented in C++. The scaffold can also add Python bindings: a
+small extension that registers the C++ operators with the SDK operator registry so Python
+applications can use them. It does not generate Python-implemented operators or wheels.
 
 ### Who creates a Holoscan Module?
 
@@ -62,7 +63,7 @@ recommended because it keeps the SDK, CUDA, compiler, and system dependencies to
 
 Install:
 
-- Python 3.12 through 3.14 for the exact `holoscan-cli==5.0.0rc1` commands in this tutorial
+- Python 3.12 through 3.14 for the exact `holoscan-cli==5.0.0rc2` commands in this tutorial
 - [uv](https://docs.astral.sh/uv/getting-started/installation/), or a Python virtual environment
 - Docker with the Buildx plugin
 - NVIDIA Container Toolkit 1.12.2 or later
@@ -81,7 +82,12 @@ addition to Python and uv, install:
 - a C++20-capable compiler
 - GoogleTest and `clang-format`
 
-The CLI version does not select the SDK version. This tutorial uses the CLI `5.0.0rc1` preview and
+For the optional Python bindings, also install Python 3.12 or later with development headers,
+pytest, and the Holoscan SDK Python package for the same SDK version, importable as `holoscan`.
+The SDK Debian packages don't include the Python package; the development container does. CMake
+downloads nanobind 3.0.1 while configuring when it isn't installed, which needs network access.
+
+The CLI version does not select the SDK version. This tutorial uses the CLI `5.0.0rc2` preview and
 explicitly selects SDK `5.0.0`.
 
 ## 3. Create an External Module
@@ -98,7 +104,7 @@ write anything to disk, let's preview exactly what the CLI plans to create:
 
 ```bash
 uvx --python 3.12 --index https://pypi.nvidia.com \
-  --from 'holoscan-cli[create]==5.0.0rc1' \
+  --from 'holoscan-cli[create]==5.0.0rc2' \
   holoscan create my-module \
   --language cpp \
   --interactive false \
@@ -106,7 +112,7 @@ uvx --python 3.12 --index https://pypi.nvidia.com \
   --dryrun
 
 uvx --python 3.12 --index https://pypi.nvidia.com \
-  --from 'holoscan-cli[create]==5.0.0rc1' \
+  --from 'holoscan-cli[create]==5.0.0rc2' \
   holoscan create my-module \
   --language cpp \
   --interactive false \
@@ -137,8 +143,11 @@ These names appear in several build and packaging systems, so keep them consiste
 Take a moment to review the values before moving on; renaming a repository, package, namespace,
 and operator together is much easier now than after consumers depend on them.
 
-The SDK 5 template accepts only `--language cpp`. It rejects `--language python`; use a CLI 4.x
-release when scaffolding a Module that targets the SDK 4.x API.
+To also use the operators from Python, pass `--language cpp python` instead. This adds Python
+bindings for the C++ operator, a Python version of the example, and a pytest suite;
+[section 4.5](#45-call-the-operator-from-python) walks through them. `--language python` on its
+own is rejected because SDK 5.0 Modules don't support Python-implemented operators yet. Use a CLI
+4.x release when scaffolding a Module that targets the SDK 4.x API.
 
 ### 3.2 Set up the generated development environment
 
@@ -192,9 +201,12 @@ holoscan-my-module/
 │       └── my_module_op.cpp      # expected-returning compute implementation
 ├── applications/
 │   └── my_module_pipeline/
-│       └── cpp/                  # Graph → compile → run_async example
+│       ├── cpp/                  # Graph → compile → run_async example
+│       └── python/               # Python example (with --language cpp python)
+├── python/                       # Python bindings (with --language cpp python)
 ├── tests/
-│   └── cpp/                      # Compile-plan and SyntheticClock GTests
+│   ├── cpp/                      # Compile-plan and SyntheticClock GTests
+│   └── python/                   # pytest suite (with --language cpp python)
 ├── pkg/
 │   └── holoscan-my-module/       # CPack Debian configuration
 └── .github/workflows/ci.yml
@@ -209,7 +221,8 @@ Key things to notice:
 
 Before publishing, update `metadata.json`, especially `source_repository`, authors, license,
 operator names, supported platforms, and `holoscan_sdk.minimum_required_version`. The generated
-metadata intentionally declares only a C++ namespace and Debian binary package.
+metadata declares a C++ namespace and a Debian binary package; with Python bindings it also lists
+`Python` and the `holoscan_my_module` Python namespace.
 
 ## 4. Implement, Build, and Test
 
@@ -324,20 +337,20 @@ Now we can try the full development loop. From the Module root, preview each eff
 command with the same options you intend to run, then execute it:
 
 ```bash
-holoscan build my_module_pipeline --dryrun --verbose
-holoscan build my_module_pipeline --verbose
+holoscan build my_module_pipeline --language cpp --dryrun --verbose
+holoscan build my_module_pipeline --language cpp --verbose
 
-holoscan run my_module_pipeline --dryrun --verbose
-holoscan run my_module_pipeline --verbose
+holoscan run my_module_pipeline --language cpp --dryrun --verbose
+holoscan run my_module_pipeline --language cpp --verbose
 
 holoscan test --dryrun --verbose
 holoscan test --verbose
 ```
 
 The expected result is a successful build, a finite application run, and a passing CTest suite.
-The application metadata selects C++, so `--language` is not required. Use
-`holoscan modes my_module_pipeline --language cpp --json` when inspecting the available mode
-explicitly.
+`--language cpp` selects the C++ example. It matters once the Module has Python bindings, because
+the example then has metadata for both languages and the CLI otherwise picks Python. Use
+`holoscan modes my_module_pipeline --language cpp --json` to inspect the available modes.
 
 When you need to inspect the container or iterate manually, open an interactive shell:
 
@@ -364,7 +377,59 @@ real transformation. `SyntheticClock` keeps those checks repeatable, but advanci
 releases work—it does not prove the work has finished. Keep the condition variable or an
 equivalent synchronization mechanism so the test waits for each observed result.
 
-### 4.5 Build and test natively
+### 4.5 Call the operator from Python
+
+If you generated the Module with `--language cpp python`, Python applications can use the same C++
+operator. There is no per-operator binding code: `python/_my_module.cpp` registers each operator
+with the SDK operator registry, and importing `holoscan_my_module` loads that registration.
+
+```cpp
+HOLOSCAN_REGISTER_OPERATOR(holoscan::my_module::MyModuleOp,
+                           "holoscan.my_module.MyModuleOp");
+```
+
+`holoscan_my_module.operators` then provides a typed proxy for each registered operator. The
+generated Python example composes, compiles, and runs a graph just like the C++ example, with
+Python source and sink operators around the Module operator:
+
+```python
+import holoscan as hs
+from holoscan_my_module.operators import MyModuleOp
+
+graph = hs.Graph("my_module_pipeline", default_clock=hs.RealtimeClock)
+source = graph.op(CounterSource, "source")
+forward = MyModuleOp(graph, "my_module_op")
+sink = graph.op(CountingSink, "sink")
+graph.add_flow(source.output, forward["in"])  # `in` is a Python keyword
+graph.add_flow(forward.out, sink.input)
+
+plan = hs.compile(graph)
+plan.require_no_errors()
+```
+
+Build the example as in section 4.3, then run the Python version:
+
+```bash
+holoscan run my_module_pipeline --language python --dryrun --verbose
+holoscan run my_module_pipeline --language python --verbose
+```
+
+`holoscan test` now also runs the `tests/python` pytest suite through CTest. It checks that the
+operator is registered, that its proxy exposes the expected ports, and that the Python example
+runs. When you add an operator, register it in `python/_my_module.cpp`, link its target to the
+extension in `python/CMakeLists.txt`, and cover it in `tests/python`.
+
+The `HOLOSCAN_MY_MODULE_BUILD_PYTHON` CMake option controls the bindings. It defaults to `ON` for a
+standalone build and `OFF` when another project includes the Module or when packaging. To run the
+Python example from a plain CMake build, add the build's Python directory in front of the SDK's
+existing `PYTHONPATH`:
+
+```bash
+PYTHONPATH=build/python/lib:$PYTHONPATH \
+  python3 applications/my_module_pipeline/python/my_module_pipeline.py
+```
+
+### 4.6 Build and test natively
 
 The container is the easiest way to keep the toolchain reproducible. If your host already has a
 compatible SDK, CUDA toolkit, compiler, and CMake, you can use native mode for a faster local edit
@@ -372,9 +437,9 @@ cycle. Keep its output separate from container output:
 
 ```bash
 export HOLOSCAN_CLI_BUILD_PARENT_DIR="$PWD/build-native"
-holoscan build my_module_pipeline --local --dryrun --verbose
+holoscan build my_module_pipeline --language cpp --local --dryrun --verbose
 holoscan test --local --dryrun --verbose
-holoscan build my_module_pipeline --local --verbose
+holoscan build my_module_pipeline --language cpp --local --verbose
 holoscan test --local --verbose
 unset HOLOSCAN_CLI_BUILD_PARENT_DIR
 ```
@@ -392,7 +457,7 @@ cmake --build build -j"$(nproc)"
 ctest --test-dir build --output-on-failure -L unit
 ```
 
-### 4.6 Declare dependencies on other Modules
+### 4.7 Declare dependencies on other Modules
 
 Modules become more useful when they compose cleanly. If this Module needs an operator from
 another Module, declare that relationship in `metadata.json:module.dependencies[]` and pin the
@@ -416,12 +481,12 @@ external source to an immutable full commit SHA:
 }
 ```
 
-CLI `5.0.0rc1` requires a full commit SHA; mutable tags and branches are rejected. A full SHA
+CLI `5.0.0rc2` requires a full commit SHA; mutable tags and branches are rejected. A full SHA
 lets a teammate or CI runner resolve the same source later. The
 [Use a Module tutorial](../use-a-module/README.md) shows how to override that pin with a local
 checkout during development without weakening the committed dependency.
 
-### 4.7 Build the Debian package
+### 4.8 Build the Debian package
 
 Now that the operator builds, its behavior is tested, and the demo exits cleanly, we're ready to
 package it for another machine. Preview the packaging operation first, just as we did for the
@@ -440,12 +505,23 @@ dpkg-deb --info holoscan-my-module_0.1.0_$(dpkg --print-architecture).deb
 dpkg-deb --contents holoscan-my-module_0.1.0_$(dpkg --print-architecture).deb
 ```
 
+The Debian package contains the C++ operators only. If the Module has Python bindings, install the
+Python package from a CMake build tree by requesting its component:
+
+```bash
+cmake --install build --component holoscan-my-module-python
+```
+
+This installs `holoscan_my_module` into `python3.<minor>/site-packages` under the install
+prefix's library directory; add that directory to `PYTHONPATH` to import it. SDK 5.0 Modules
+can't build wheels or provide a `holoscan.my_module` import alias yet.
+
 The final proof is installation in a clean consumer where the Holoscan Debian dependency is
 available. Extracting the archive may be useful for inspection, but it does not prove that APT can
 satisfy and install the declared dependencies. The template creates the artifact; your project's
 release process is responsible for publishing it to an APT repository.
 
-### 4.8 Configure shared defaults
+### 4.9 Configure shared defaults
 
 Most Modules can begin with metadata-derived defaults. When your whole team needs the same CUDA
 selection, forwarded variable, Docker option, or base image, put that shared choice in
@@ -467,7 +543,7 @@ so mount any referenced host path separately. Use exact image references that yo
 tested, and use `--dryrun --verbose` whenever you need to see which setting came from metadata,
 project configuration, the environment, or the command line.
 
-### 4.9 Review the generated CI
+### 4.10 Review the generated CI
 
 The scaffold also gives you a starting CI workflow in `.github/workflows/ci.yml`. It separates
 fast feedback from hardware-backed validation:
@@ -482,7 +558,7 @@ Treat this workflow as a useful baseline, not a finished release gate. Update th
 and image for your infrastructure, keep the CLI constraints synchronized, and add hardware or
 end-to-end coverage for the behavior your Module promises.
 
-### 4.10 Publish and share
+### 4.11 Publish and share
 
 Your Module is now ready to move from a development repository into a release process. Before you
 share it:
@@ -508,19 +584,29 @@ Once you are familiar with the workflow, use this table as a quick reminder:
 | Preview scaffold | `holoscan create <name> --language cpp --context holoscan_version=5.0.0 --dryrun` |
 | Inspect projects | `holoscan list --json` |
 | Inspect environment | `holoscan env-info --json` / `holoscan env-check --json` |
-| Build demo | `holoscan build <module>_pipeline` |
-| Run finite demo | `holoscan run <module>_pipeline` |
+| Add Python bindings | `holoscan create <name> --language cpp python ...` |
+| Build demo | `holoscan build <module>_pipeline --language cpp` |
+| Run finite demo | `holoscan run <module>_pipeline --language cpp` |
+| Run Python demo | `holoscan run <module>_pipeline --language python` |
 | Run CTest | `holoscan test` |
 | Package | `holoscan package holoscan-<name> --pkg-generator DEB` |
+| Install Python package | `cmake --install build --component holoscan-<name>-python` |
 | Use an explicit root | `holoscan --project-root /path/to/module <command>` |
 
 ## 6. Troubleshooting
 
-### The CLI rejects Python or WHEEL
+### The CLI rejects `--language python` or WHEEL
 
-The SDK 5 scaffold is C++ and DEB-only. This is intentional: do not add back the removed binding,
-pytest, editable-import, or wheel infrastructure. Use a supported older template for an SDK 4
-Module, or wait for the SDK and CLI to provide a supported SDK 5 Python template.
+SDK 5.0 Module operators are implemented in C++. Use `--language cpp python` to call them from
+Python, and install the Python package with `cmake --install` as shown in section 4.8.
+Python-implemented operators and wheels aren't supported by the SDK 5 template yet. Use a CLI 4.x
+release for an SDK 4 Module.
+
+### `import holoscan` fails after setting `PYTHONPATH`
+
+The development container finds the SDK's Python package through its own `PYTHONPATH`. Add the
+Module's build directory in front (`PYTHONPATH=build/python/lib:$PYTHONPATH`) instead of
+replacing the variable.
 
 ### Graph compilation fails
 
@@ -545,7 +631,7 @@ For the simplest reproducible environment, use the generated container. For a na
 confirm that SDK 5.0 or later is installed and select it explicitly:
 
 ```bash
-holoscan build my_module_pipeline --local --local-sdk-root /path/to/sdk --dryrun --verbose
+holoscan build my_module_pipeline --language cpp --local --local-sdk-root /path/to/sdk --dryrun --verbose
 ```
 
 After reviewing the preview, repeat it without `--dryrun`. You can also set
