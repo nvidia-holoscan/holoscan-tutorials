@@ -380,8 +380,9 @@ equivalent synchronization mechanism so the test waits for each observed result.
 ### 4.5 Call the operator from Python
 
 If you generated the Module with `--language cpp python`, Python applications can use the same C++
-operator. There is no per-operator binding code: `python/_my_module.cpp` registers each operator
-with the SDK operator registry, and importing `holoscan_my_module` loads that registration.
+operator. You don't write nanobind bindings for each operator: `python/_my_module.cpp` registers
+each one with a `HOLOSCAN_REGISTER_OPERATOR` line, and importing `holoscan_my_module` loads those
+registrations.
 
 ```cpp
 HOLOSCAN_REGISTER_OPERATOR(holoscan::my_module::MyModuleOp,
@@ -421,8 +422,8 @@ extension in `python/CMakeLists.txt`, and cover it in `tests/python`.
 
 The `HOLOSCAN_MY_MODULE_BUILD_PYTHON` CMake option controls the bindings. It defaults to `ON` for a
 standalone build and `OFF` when another project includes the Module or when packaging. To run the
-Python example from a plain CMake build, add the build's Python directory in front of the SDK's
-existing `PYTHONPATH`:
+Python example from a plain CMake build (section 4.6), add the build's Python directory in front of
+the SDK's existing `PYTHONPATH`:
 
 ```bash
 PYTHONPATH=build/python/lib:$PYTHONPATH \
@@ -509,12 +510,15 @@ The Debian package contains the C++ operators only. If the Module has Python bin
 Python package from a CMake build tree by requesting its component:
 
 ```bash
-cmake --install build --component holoscan-my-module-python
+cmake --install build --component holoscan-my-module-python --prefix "$PWD/build/install"
+PYTHONPATH="$PWD/build/install/lib/python3.12/site-packages:$PYTHONPATH" \
+  python3 -c "import holoscan_my_module; print(holoscan_my_module.__file__)"
 ```
 
-This installs `holoscan_my_module` into `python3.<minor>/site-packages` under the install
-prefix's library directory; add that directory to `PYTHONPATH` to import it. SDK 5.0 Modules
-can't build wheels or provide a `holoscan.my_module` import alias yet.
+Pass `--prefix` because the default `/usr/local` prefix isn't writable in the development container
+and isn't on Ubuntu's Python path. A prefix inside `build/` stays out of Git. Replace `python3.12`
+if you use a different Python version. SDK 5.0 Modules can't build wheels or provide a
+`holoscan.my_module` import alias yet.
 
 The final proof is installation in a clean consumer where the Holoscan Debian dependency is
 available. Extracting the archive may be useful for inspection, but it does not prove that APT can
@@ -590,7 +594,7 @@ Once you are familiar with the workflow, use this table as a quick reminder:
 | Run Python demo | `holoscan run <module>_pipeline --language python` |
 | Run CTest | `holoscan test` |
 | Package | `holoscan package holoscan-<name> --pkg-generator DEB` |
-| Install Python package | `cmake --install build --component holoscan-<name>-python` |
+| Install Python package | `cmake --install build --component holoscan-<name>-python --prefix <dir>` |
 | Use an explicit root | `holoscan --project-root /path/to/module <command>` |
 
 ## 6. Troubleshooting

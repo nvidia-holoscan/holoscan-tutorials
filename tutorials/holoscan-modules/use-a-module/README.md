@@ -80,7 +80,7 @@ each path's section below calls out anything extra it needs.
 - [Python >=3.12](https://www.python.org/downloads/) for this CLI 5.x walkthrough.
   Binary consumers follow the Python requirements of their SDK and module wheels.
 - For Path A, install the [Holoscan CLI](https://github.com/nvidia-holoscan/holoscan-cli)
-  in the consuming project's development environment. The examples use `holoscan-cli==5.0.0rc1`
+  in the consuming project's development environment. The examples use `holoscan-cli==5.0.0rc2`
   from NVIDIA's Python index, as in the
   [Create a Module tutorial](../create-a-module/README.md#32-set-up-the-generated-development-environment).
 
@@ -158,7 +158,7 @@ metadata. Field reference: the `module_dependency` definition in the Holoscan CL
 - **`name`** (required) — Module name as published in its own
   `metadata.json:module.name`.
 - **`source.{git_url, ref}`** — the Module's git URL and a pinned 40-character commit SHA.
-  CLI `5.0.0rc1` requires an immutable SHA; mutable tags and branches are rejected.
+  CLI `5.0.0rc2` requires an immutable SHA; mutable tags and branches are rejected.
 - **`provides_operators`** — operators this dependency contributes. The generated manifest
   records their provider; the consuming CMake project controls which Modules are fetched and
   which operators are enabled (`OP_<name>=ON`), as shown in §4.3.
@@ -184,7 +184,7 @@ FetchContent_MakeAvailable(holoscan_my_sensor)
 ```
 
 The helper filename and its `holohub_declare_external_module()` function are the API names
-still shipped by CLI `5.0.0rc1`. The provider name `holoscan_my_sensor` is derived from the
+still shipped by CLI `5.0.0rc2`. The provider name `holoscan_my_sensor` is derived from the
 Module name by replacing characters other than letters, digits, and underscores with underscores.
 
 ```bash
