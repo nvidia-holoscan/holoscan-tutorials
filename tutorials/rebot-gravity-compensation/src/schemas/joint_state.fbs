@@ -1,0 +1,13 @@
+namespace rebot.messages;
+
+// Joint order follows the configured actuators. Angles are radians, angular
+// velocities radians/second, and measured motor torques Newton-metres.
+table JointState {
+  sequence: ulong (id: 0);
+  timestamp_ns: ulong (id: 1); // Host cache-read time, not a sensor timestamp.
+  position: [double] (id: 2);
+  velocity: [double] (id: 3);
+  torque: [double] (id: 4);
+}
+root_type JointState;
+file_identifier "RBJS";

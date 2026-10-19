@@ -1,0 +1,12 @@
+# Reuse the gravity demo's hardware, URDF, joint directions, and gravity scaling.
+robot_config: rebotarm_dm.yaml
+
+end_effector_frame: end_link
+stiffness: 300.0           # N/m
+damping: 12.0              # N s/m
+joint_damping: 1.0         # Motor-side MIT kd; arm kp is zero.
+max_force: 15.0            # N, commanded Cartesian force norm
+max_error: 0.10            # m, stop if the held point moves farther away
+max_joint_speed: 4.0       # rad/s
+max_cartesian_speed: 1.0   # m/s
+torque_fraction: 0.8       # Fraction of each motor/URDF effort limit

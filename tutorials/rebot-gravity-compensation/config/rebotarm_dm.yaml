@@ -1,0 +1,59 @@
+# Damiao serial arm: six arm joints and one gripper.
+# Arm gains are configured below; only the gripper uses per-joint MIT gains.
+# Holoscan configuration uses decimal integers, including motor/CAN IDs.
+
+urdf_path: "urdf/DM/urdf/ReBot_Arm_DM.urdf"
+channel: /dev/ttyACM0
+
+groups:
+  arm:
+    joints: [joint1, joint2, joint3, joint4, joint5, joint6]
+  gripper:
+    joints: [gripper]
+
+joints:
+  - name: joint1
+    motor_id: 1
+    feedback_id: 17
+    model: "4340P"
+    vendor: "damiao"
+  - name: joint2
+    motor_id: 2
+    feedback_id: 18
+    model: "4340P"
+    vendor: "damiao"
+  - name: joint3
+    motor_id: 3
+    feedback_id: 19
+    model: "4340P"
+    vendor: "damiao"
+  - name: joint4
+    motor_id: 4
+    feedback_id: 20
+    model: "4310"
+    vendor: "damiao"
+  - name: joint5
+    motor_id: 5
+    feedback_id: 21
+    model: "4310"
+    vendor: "damiao"
+  - name: joint6
+    motor_id: 6
+    feedback_id: 22
+    model: "4310"
+    vendor: "damiao"
+  - name: gripper
+    motor_id: 7
+    feedback_id: 23
+    model: "4310"
+    vendor: "damiao"
+    MIT:
+      kp: 8.0
+      kd: 1.0
+
+gravity_compensation:
+  # Compliant gains used from the first motor command.
+  kp: 1.5
+  kd: 1.0
+  # Per-joint gravity torque scaling factor to correct model-vs-hardware bias.
+  tau_scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]

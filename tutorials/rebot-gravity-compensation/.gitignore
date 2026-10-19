@@ -1,0 +1,7 @@
+/build*/
+/install/
+/.venv/
+/.vscode/
+/compile_commands.json
+/artifacts/
+__pycache__/

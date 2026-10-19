@@ -1,0 +1,15 @@
+namespace rebot.messages;
+
+// MIT command vectors use the same actuator order as the originating state.
+// Timestamp and sequence bound graph processing delay, not motor feedback age.
+table GravityCommand {
+  sequence: ulong (id: 0);
+  timestamp_ns: ulong (id: 1);
+  position: [double] (id: 2);
+  velocity: [double] (id: 3);
+  kp: [double] (id: 4);
+  kd: [double] (id: 5);
+  torque: [double] (id: 6);
+}
+root_type GravityCommand;
+file_identifier "RBGC";
