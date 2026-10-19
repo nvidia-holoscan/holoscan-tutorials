@@ -88,7 +88,7 @@ appropriate hardware-specific architecture, as described in
 
 ### Using the Holoscan CLI directly
 
-The CLI workflows in this section and the next use a HoloHub checkout containing
+The CLI workflow in this section uses a HoloHub checkout containing
 this tutorial. In the standalone `holoscan-tutorials` repository, follow the
 [manual Docker and CMake workflow](#manual-docker-and-cmake-workflow) instead.
 
@@ -110,17 +110,6 @@ HOLOSCAN_CLI_BASE_SDK_VERSION=4.6.0 \
 
 `HOLOSCAN_CLI_BASE_SDK_VERSION` supplies the SDK image version that the standalone CLI does not
 assume.
-
-### Using the HoloHub CLI
-
-As an alternative, run the HoloHub wrapper from the repository root:
-
-```bash
-./holohub install cross_compilation_example
-```
-
-The wrapper manages the compatible Holoscan CLI environment and SDK version, so this option does
-not require a separate Python virtual environment or `HOLOSCAN_CLI_BASE_SDK_VERSION`.
 
 The default `cross_compile` mode builds the x86_64 cross-compilation container, configures the
 project with `aarch64-cross-sbsa.cmake`, compiles an AArch64 executable, and installs it to
