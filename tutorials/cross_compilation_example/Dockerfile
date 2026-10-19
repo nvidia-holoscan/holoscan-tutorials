@@ -112,7 +112,7 @@ RUN apt-get update \
 # Install and verify the standalone Holoscan CLI used by the containerized build flow.
 FROM holoscan-sdk AS holoscan-cli
 
-ARG HOLOSCAN_CLI_VERSION=5.0.0
+ARG HOLOSCAN_CLI_VERSION=5.0.0rc3
 
 RUN PIP_BREAK_SYSTEM_PACKAGES=1 python3 -m pip install --no-cache-dir \
   --extra-index-url https://pypi.nvidia.com \

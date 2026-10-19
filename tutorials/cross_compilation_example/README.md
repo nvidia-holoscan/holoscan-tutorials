@@ -97,7 +97,7 @@ Create a Python virtual environment and install the Holoscan CLI version pinned 
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install --extra-index-url https://pypi.nvidia.com \
-  "holoscan-cli==5.0.0"
+  "holoscan-cli==5.0.0rc3"
 ```
 
 From the repository root, build and install the example with one command:
@@ -329,6 +329,19 @@ HOLOSCAN_DEB="$PWD/.cross/${HOLOSCAN_DEB_NAME}"
 mkdir -p .cross/holoscan-root
 ```
 
+The Holoscan SDK Core package also requires `libexpected-dev` (at least 1.1.0). Ubuntu 24.04 provides version
+`1.1.0-2` as an architecture-independent package. Download it using the host's Ubuntu repository
+and extract it into the same target root:
+
+```bash
+(
+  cd .cross
+  apt-get download libexpected-dev=1.1.0-2
+)
+test "$(dpkg-deb -f .cross/libexpected-dev_1.1.0-2_all.deb Architecture)" = all
+dpkg-deb --extract .cross/libexpected-dev_1.1.0-2_all.deb .cross/holoscan-root
+```
+
 #### Option 1: Use temporary apt architecture overrides
 
 This is the least invasive option. The architecture settings apply only to these commands and do
@@ -397,19 +410,6 @@ printf '%s  %s\n' "${HOLOSCAN_DEB_SHA256}" "${HOLOSCAN_DEB}" | sha256sum --check
 ```
 
 #### Validate and extract the package
-
-The Holoscan SDK Core package also requires `libexpected-dev` (at least 1.1.0). Ubuntu 24.04 provides version
-`1.1.0-2` as an architecture-independent package. Download it using the host's Ubuntu repository
-and extract it into the same target root:
-
-```bash
-(
-  cd .cross
-  apt-get download libexpected-dev=1.1.0-2
-)
-test "$(dpkg-deb -f .cross/libexpected-dev_1.1.0-2_all.deb Architecture)" = all
-dpkg-deb --extract .cross/libexpected-dev_1.1.0-2_all.deb .cross/holoscan-root
-```
 
 After completing one SDK download option, validate and extract the package:
 
@@ -487,11 +487,11 @@ For a hardware-specific build:
    nvidia-smi --query-gpu=name,compute_cap --format=csv,noheader
    ```
 
-2. Remove the decimal point and append `-real`. For example, compute capability 8.7 becomes
-   `-DCMAKE_CUDA_ARCHITECTURES="87-real"`.
+2. Remove the decimal point and append `-real`. For example, the integrated Thor GPU reports
+   compute capability 11.0 with CUDA 13, which becomes `-DCMAKE_CUDA_ARCHITECTURES="110-real"`.
 
 The `-real` suffix generates GPU machine code and avoids PTX JIT for that architecture, but the
-result is less portable. Omitting the suffix, such as `87`, makes CMake generate both real and
+result is less portable. Omitting the suffix, such as `110`, makes CMake generate both real and
 virtual code. See CMake's
 [`CUDA_ARCHITECTURES` documentation](https://cmake.org/cmake/help/latest/prop_tgt/CUDA_ARCHITECTURES.html)
 for the complete syntax.
