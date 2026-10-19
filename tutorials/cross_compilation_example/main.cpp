@@ -15,34 +15,39 @@
  * limitations under the License.
  */
 
+#include <chrono>
+#include <iostream>
+
 #include <holoscan/holoscan.hpp>
 
 namespace holoscan::ops {
 
-class HelloWorldOp : public Operator {
+class HelloWorldOp : public Operator<> {
  public:
-  HOLOSCAN_OPERATOR_FORWARD_ARGS(HelloWorldOp)
+  Contract contract() const override {
+    Contract result;
+    result.trigger(OnClock{.period = std::chrono::milliseconds{1}})
+        .complete_after(ComputeCalls{.limit = 1});
+    return result;
+  }
 
-  void setup(OperatorSpec&) override {}
-
-  void compute(InputContext&, OutputContext&, ExecutionContext&) override {
+  expected<void, Error> compute(ExecutionContext&) override {
     HOLOSCAN_LOG_INFO("Hello Holoscan!");
+    return {};
   }
 };
 
 }  // namespace holoscan::ops
 
-class HelloWorldApp : public holoscan::Application {
- public:
-  void compose() override {
-    auto hello = make_operator<holoscan::ops::HelloWorldOp>(
-        "hello", make_condition<holoscan::CountCondition>(1));
-    add_operator(hello);
-  }
-};
-
 int main() {
-  auto app = holoscan::make_application<HelloWorldApp>();
-  app->run();
-  return 0;
+  holoscan::Graph graph{"cross-compilation-example"};
+  graph.op<holoscan::ops::HelloWorldOp>("hello");
+  graph.set_default_clock(graph.add_clock<holoscan::RealtimeClock>("clock"));
+
+  const auto plan = holoscan::compile(graph);
+  if (!plan.ok()) {
+    std::cerr << plan.json() << '\n';
+    return 1;
+  }
+  return holoscan::run(plan);
 }

@@ -1,6 +1,6 @@
 # Cross Compilation Example
 
-This tutorial shows how to cross-compile a small Holoscan Software Development Kit (SDK) 4.6
+This tutorial shows how to cross-compile a small Holoscan Software Development Kit (SDK) 5.0
 application on an x86_64 host machine for NVIDIA Jetson AGX Thor and NVIDIA IGX Thor target
 systems. Follow along to cross-compile with the Holoscan SDK arm64 Debian package without rebuilding
 the SDK from source or emulating the target environment with QEMU.
@@ -28,10 +28,9 @@ and [CUDA cross-platform installation guide](https://docs.nvidia.com/cuda/cuda-i
 for the platform details.
 
 This example uses Ubuntu 24.04's AArch64 GNU Compiler Collection (GCC) cross-compiler and target
-libraries to match the released Ubuntu 24.04 Holoscan package. It does not use the standalone Jetson
-Linux 39.2.1 cross-toolchain: that toolchain provides a GNU C Library (glibc) 2.28 sysroot, while
-Holoscan 4.6 requires glibc 2.35 or newer. Because Thor implements the Server Base System
-Architecture (SBSA), the core application can instead use NVIDIA's generic AArch64 CUDA and Holoscan
+libraries to match the Ubuntu 24.04 Holoscan package. It does not use the standalone Jetson
+Linux 39.2.1 cross-toolchain, which provides an older GNU C Library (glibc) 2.28 sysroot. Because
+Thor implements the Server Base System Architecture (SBSA), the core application can instead use NVIDIA's generic AArch64 CUDA and Holoscan
 packages without a board-specific target filesystem.
 
 This supported path is limited to the core Holoscan C++ API demonstrated here. Applications that use
@@ -98,13 +97,13 @@ Create a Python virtual environment and install the Holoscan CLI version pinned 
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install --extra-index-url https://pypi.nvidia.com \
-  "holoscan-cli==4.6.0"
+  "holoscan-cli==5.0.0"
 ```
 
 From the repository root, build and install the example with one command:
 
 ```bash
-HOLOSCAN_CLI_BASE_SDK_VERSION=4.6.0 \
+HOLOSCAN_CLI_BASE_SDK_VERSION=5.0.0 \
   holoscan install cross_compilation_example
 ```
 
@@ -133,12 +132,15 @@ From the repository root:
 ```bash
 docker build --platform linux/amd64 \
   -f tutorials/cross_compilation_example/Dockerfile \
-  -t holoscan-4-cross-sbsa:4.6.0 .
+  -t holoscan-5-cross-sbsa:5.0.0 .
 ```
 
 The image installs the native x86_64 build tools, Ubuntu 24.04's AArch64 compiler and target
 libraries, and CUDA Cross-SBSA packages. It then uses NVIDIA's signed SBSA apt repository to download
-and extract `holoscan-cuda-13_4.6.0.0-1_arm64.deb` into `/opt/nvidia/holoscan`. Extracting the target
+and extract `holoscan-core-cuda-13_5.0.0.8.0-1_arm64.deb` into `/opt/holoscan-target`.
+The extracted SDK prefix is `/opt/holoscan-target/usr`; libraries and CMake exports use
+`lib/aarch64-linux-gnu`. The image also extracts Ubuntu's architecture-independent `libexpected-dev`
+package into the same root for the SDK's `tl-expected` dependency. Extracting the target
 package makes its headers, CMake exports, and AArch64 libraries available without trying to execute
 its AArch64 package dependencies in the x86_64 builder.
 
@@ -156,7 +158,7 @@ docker run --rm --platform linux/amd64 \
   --user "$(id -u):$(id -g)" \
   --mount type=bind,src="$PWD",dst=/workspace/source,readonly \
   --mount type=bind,src="$PWD/build-cross",dst=/workspace/build \
-  holoscan-4-cross-sbsa:4.6.0 \
+  holoscan-5-cross-sbsa:5.0.0 \
   cmake -S /workspace/source -B /workspace/build -G Ninja \
     -DCMAKE_TOOLCHAIN_FILE=/opt/holoscan-cross/aarch64-cross-sbsa.cmake \
     -DCMAKE_BUILD_TYPE=Release \
@@ -167,7 +169,7 @@ docker run --rm --platform linux/amd64 \
   --user "$(id -u):$(id -g)" \
   --mount type=bind,src="$PWD",dst=/workspace/source,readonly \
   --mount type=bind,src="$PWD/build-cross",dst=/workspace/build \
-  holoscan-4-cross-sbsa:4.6.0 \
+  holoscan-5-cross-sbsa:5.0.0 \
   cmake --build /workspace/build
 
 # Install
@@ -175,7 +177,7 @@ docker run --rm --platform linux/amd64 \
   --user "$(id -u):$(id -g)" \
   --mount type=bind,src="$PWD",dst=/workspace/source,readonly \
   --mount type=bind,src="$PWD/build-cross",dst=/workspace/build \
-  holoscan-4-cross-sbsa:4.6.0 \
+  holoscan-5-cross-sbsa:5.0.0 \
   cmake --install /workspace/build
 ```
 
@@ -189,25 +191,25 @@ CROSS_COMPILED_APP=build-cross/install/bin/cross_compilation_example
 ### Verify the result
 
 ```bash
-file "${CROSS_COMPILED_APP}"
-readelf --dynamic "${CROSS_COMPILED_APP}" | grep libholoscan_core
+file "${CROSS_COMPILED_APP}" | grep -E 'ELF .*ARM aarch64'
+readelf --dynamic "${CROSS_COMPILED_APP}" | grep -F '[libholoscan_core.so.5]'
 ```
 
 `file` must report an AArch64 Executable and Linkable Format (ELF) binary. `readelf` must report a
-dependency on `libholoscan_core.so.4`. Do not use host `ldd`: the host cannot load the AArch64
+dependency on `libholoscan_core.so.5`. Do not use host `ldd`: the host cannot load the AArch64
 executable.
 
 ### Deploy and validate on a Thor target
 
 Prepare either supported target baseline listed in [Background](#background), then install the
-Holoscan 4.6 CUDA 13 Debian package by following the
+Holoscan 5.0 Core CUDA 13 Debian package by following the
 [Holoscan SDK installation guide](https://docs.nvidia.com/holoscan/sdk-user-guide/setup/sdk-installation).
 If the NVIDIA SBSA repository is already configured on the target, the package used by this build
 can be installed directly:
 
 ```bash
 sudo apt-get update
-sudo apt-get install --yes holoscan-cuda-13=4.6.0.0-1
+sudo apt-get install --yes holoscan-core-cuda-13=5.0.0.8.0-1
 ```
 
 On the target, confirm the platform and runtime versions:
@@ -216,12 +218,12 @@ On the target, confirm the platform and runtime versions:
 test "$(uname -m)" = aarch64
 . /etc/os-release
 test "${VERSION_ID}" = 24.04
-dpkg-query -W -f='${Package} ${Version}\n' holoscan-cuda-13
+dpkg-query -W -f='${Package} ${Version}\n' holoscan-core-cuda-13
 dpkg-query -W -f='${Package} ${Version}\n' cuda-cudart-13-0
 head -n 1 /etc/nv_tegra_release
 ```
 
-The Holoscan package must report `4.6.0.0-1`, the CUDA runtime must report a 13.0 release, and the
+The Holoscan package must report `5.0.0.8.0-1`, the CUDA runtime must report a 13.0 release, and the
 Jetson or IGX release information must match the selected baseline. Copy the staged executable from
 the x86_64 host, replacing the target login and address:
 
@@ -233,15 +235,16 @@ scp "${CROSS_COMPILED_APP}" \
 Run the remaining checks on the target:
 
 ```bash
+set -o pipefail
 chmod +x /tmp/cross_compilation_example
 
 # Validate that all shared libraries resolve on the target
 ldd /tmp/cross_compilation_example | tee /tmp/cross_compilation_example.ldd
 ! grep -q 'not found' /tmp/cross_compilation_example.ldd
 
-# Validate the application runs successfully
-/tmp/cross_compilation_example 2>&1 | tee /tmp/cross_compilation_example.log
-grep -F 'Hello Holoscan!' /tmp/cross_compilation_example.log
+# Validate successful exit and exactly one hello-world activation
+timeout 30s /tmp/cross_compilation_example 2>&1 | tee /tmp/cross_compilation_example.log
+test "$(grep -Fc 'Hello Holoscan!' /tmp/cross_compilation_example.log)" -eq 1
 ```
 
 The host-side `file` and `readelf` checks validate the cross-build and linkage. This target-side run
@@ -274,14 +277,14 @@ sudo apt-get install --yes --no-install-recommends \
   python3-venv
 ```
 
-The Holoscan 4.6 package declares CMake 3.20 as its minimum. This cross-compilation workflow is
-tested with CMake 3.30.4 or newer, so install a compatible version in a project-local Python
+The Holoscan 5.0 package requires CMake 4.0 and exports C++20 compile requirements. Install the
+same CMake version used by the container in a project-local Python
 environment:
 
 ```bash
 python3 -m venv .cross/cmake-venv
 . .cross/cmake-venv/bin/activate
-python -m pip install 'cmake>=3.30.4'
+python -m pip install 'cmake==4.0.3'
 cmake --version
 ```
 
@@ -320,8 +323,8 @@ Choose one of the following methods to download the released target package. Eac
 same file, which is validated and extracted afterward:
 
 ```bash
-HOLOSCAN_DEB_VERSION=4.6.0.0-1
-HOLOSCAN_DEB_NAME="holoscan-cuda-13_${HOLOSCAN_DEB_VERSION}_arm64.deb"
+HOLOSCAN_DEB_VERSION=5.0.0.8.0-1
+HOLOSCAN_DEB_NAME="holoscan-core-cuda-13_${HOLOSCAN_DEB_VERSION}_arm64.deb"
 HOLOSCAN_DEB="$PWD/.cross/${HOLOSCAN_DEB_NAME}"
 mkdir -p .cross/holoscan-root
 ```
@@ -345,7 +348,7 @@ sudo apt-get update \
   apt-get download \
     -o APT::Architecture=arm64 \
     -o APT::Architectures=arm64 \
-    "holoscan-cuda-13:arm64=${HOLOSCAN_DEB_VERSION}"
+    "holoscan-core-cuda-13:arm64=${HOLOSCAN_DEB_VERSION}"
 )
 ```
 
@@ -367,7 +370,7 @@ sudo apt-get update \
 # Download the package
 (
   cd .cross
-  apt-get download "holoscan-cuda-13:arm64=${HOLOSCAN_DEB_VERSION}"
+  apt-get download "holoscan-core-cuda-13:arm64=${HOLOSCAN_DEB_VERSION}"
 )
 
 # Optional if arm64 was not already configured:
@@ -384,7 +387,7 @@ together whenever the version changes:
 
 ```bash
 HOLOSCAN_DEB_URL="https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/sbsa/${HOLOSCAN_DEB_NAME}"
-HOLOSCAN_DEB_SHA256=de5da74f095c36f64ba446a04f98e8f3e30c04be96845b604333098f95e6e5e9
+HOLOSCAN_DEB_SHA256=b176cd45911294a40963f38ec7016e760fcc1956d44b4c30c276a4cf96e4c160
 
 # Download the package
 curl -fsSL "${HOLOSCAN_DEB_URL}" -o "${HOLOSCAN_DEB}"
@@ -395,7 +398,20 @@ printf '%s  %s\n' "${HOLOSCAN_DEB_SHA256}" "${HOLOSCAN_DEB}" | sha256sum --check
 
 #### Validate and extract the package
 
-After completing one download option, validate and extract the package:
+SDK 5 Core also requires `libexpected-dev` (at least 1.1.0). Ubuntu 24.04 provides version
+`1.1.0-2` as an architecture-independent package. Download it using the host's Ubuntu repository
+and extract it into the same target root:
+
+```bash
+(
+  cd .cross
+  apt-get download libexpected-dev=1.1.0-2
+)
+test "$(dpkg-deb -f .cross/libexpected-dev_1.1.0-2_all.deb Architecture)" = all
+dpkg-deb --extract .cross/libexpected-dev_1.1.0-2_all.deb .cross/holoscan-root
+```
+
+After completing one SDK download option, validate and extract the package:
 
 ```bash
 # Validate the package
@@ -407,22 +423,22 @@ test "$(dpkg-deb -f "${HOLOSCAN_DEB}" Version)" = "${HOLOSCAN_DEB_VERSION}"
 dpkg-deb --extract "${HOLOSCAN_DEB}" .cross/holoscan-root
 
 # Validate the extraction succeeded
-HOLOSCAN_TARGET_SDK_ROOT="$PWD/.cross/holoscan-root/opt/nvidia/holoscan"
+HOLOSCAN_TARGET_SDK_ROOT="$PWD/.cross/holoscan-root/usr"
 test -f "${HOLOSCAN_TARGET_SDK_ROOT}/include/holoscan/holoscan.hpp"
-test -f "${HOLOSCAN_TARGET_SDK_ROOT}/lib/cmake/holoscan/holoscan-config.cmake"
-file -L "${HOLOSCAN_TARGET_SDK_ROOT}/lib/libholoscan_core.so"
+test -f "${HOLOSCAN_TARGET_SDK_ROOT}/lib/aarch64-linux-gnu/cmake/holoscan/holoscan-config.cmake"
+file -L "${HOLOSCAN_TARGET_SDK_ROOT}/lib/aarch64-linux-gnu/libholoscan_core.so"
 ```
 
 The final command must report an ARM AArch64 library. The apt options verify the repository
 signature and package hash; the curl option relies on the explicit SHA-256 check. Add `.cross/` to
 the project's `.gitignore`. The target needs the matching runtime package from the
 [Holoscan SDK installation guide](https://docs.nvidia.com/holoscan/sdk-user-guide/setup/sdk-installation).
-Using the same `holoscan-cuda-13` version in the extracted build dependency and on the target avoids
+Using the same `holoscan-core-cuda-13` version in the extracted build dependency and on the target avoids
 an SDK application binary interface (ABI) mismatch.
 
 Extracting this package is sufficient for the core `holoscan::core` API used by this tutorial. It
 is not equivalent to installing every optional Holoscan backend and its development dependencies.
-Installing `holoscan-cuda-13:arm64` into the x86_64 builder would mix target packages into the host
+Installing `holoscan-core-cuda-13:arm64` into the x86_64 builder would mix target packages into the host
 package database and could run AArch64 package-maintainer scripts. Keep downloading and extracting
 target packages for the cross-build instead. On the AArch64 target system, use `apt-get install` so
 apt can install and configure the matching runtime dependency closure normally.
@@ -439,7 +455,7 @@ cross-compilation variables. It uses the standard compiler and CUDA locations in
 | --- | --- |
 | `CMAKE_SYSTEM_NAME`, `CMAKE_SYSTEM_PROCESSOR` | Select Linux and AArch64 as the target |
 | `HOLOSCAN_CROSS_SYSROOT` | GNU cross-tool root, `/usr/aarch64-linux-gnu` by default |
-| `HOLOSCAN_TARGET_SDK_ROOT` | Extracted AArch64 SDK prefix, `/opt/nvidia/holoscan` by default |
+| `HOLOSCAN_TARGET_SDK_ROOT` | Extracted AArch64 SDK prefix, `/opt/holoscan-target/usr` by default |
 | `CMAKE_C_COMPILER`, `CMAKE_CXX_COMPILER` | Standard `aarch64-linux-gnu` cross compilers |
 | `CMAKE_CUDA_COMPILER` | The included wrapper around `/usr/local/cuda-13.0/bin/nvcc` that selects CUDA's `sbsa-linux` target |
 | `CMAKE_CUDA_HOST_COMPILER` | `aarch64-linux-gnu-g++` |
@@ -485,10 +501,10 @@ for the complete syntax.
 A C++-only project needs this minimum:
 
 ```cmake
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 4.0)
 project(my_holoscan_app LANGUAGES CXX)
 
-find_package(holoscan 4.6 REQUIRED CONFIG)
+find_package(holoscan 5.0 REQUIRED CONFIG COMPONENTS core)
 
 add_executable(my_holoscan_app main.cpp)
 target_link_libraries(my_holoscan_app PRIVATE holoscan::core)
@@ -506,9 +522,8 @@ project(my_holoscan_app LANGUAGES CXX CUDA)
 cmake ... -DCMAKE_CUDA_ARCHITECTURES="75-virtual"
 ```
 
-Link additional exported targets only when the code uses them. For example, an application using
-the packaged ping operators would add `holoscan::ops::ping_tx` and `holoscan::ops::ping_rx` to
-`target_link_libraries`.
+Request additional SDK 5 components and link their exported targets only when the application
+uses them. The core package alone is sufficient for this example.
 
 ### Configure and build
 
@@ -521,7 +536,7 @@ Activate the CMake environment, point the toolchain at the project-local SDK, an
 # Configure
 cmake -S . -B build-cross -G Ninja \
   -DCMAKE_TOOLCHAIN_FILE="$PWD/cmake/aarch64-cross-sbsa.cmake" \
-  -DHOLOSCAN_TARGET_SDK_ROOT="$PWD/.cross/holoscan-root/opt/nvidia/holoscan" \
+  -DHOLOSCAN_TARGET_SDK_ROOT="$PWD/.cross/holoscan-root/usr" \
   -DHOLOSCAN_CROSS_SYSROOT=/usr/aarch64-linux-gnu \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="$PWD/build-cross/install"
@@ -542,30 +557,21 @@ library from the build machine.
 
 ### Extend the target sysroot for optional SDK components
 
-The hello-world application does not exercise Holoscan inference backends such as TensorRT,
-PyTorch, or Open Neural Network Exchange (ONNX) Runtime. Applications that use these components
-must add their AArch64 development headers and libraries to the cross-build and install their
-matching runtime libraries on the target.
+SDK 5 splits Core, Inference, Vision, and Visualization into separate packages. This example
+extracts only `holoscan-core-cuda-13`; the `holoscan` package is a metapackage that pulls in all
+components when installed with apt.
 
-Use the following rules when extending the cross-build environment:
+Applications using additional components must download and extract their actual AArch64 runtime
+and development packages, plus their dependencies, into a separate target root. The
+`holoscan-inference-cuda-13`, `holoscan-vision-cuda-13`, and `holoscan-visualization-cuda-13`
+packages can themselves be metapackages: extracting only those small files does not provide the
+component headers or libraries. Resolve their dependency closure from the matching target
+repositories. Keep the SDK Core extraction in `.cross/holoscan-root`.
 
-- Keep the Holoscan SDK Debian package in its separate extracted root. Installing its arm64 package
-  directly would collide with an amd64 Holoscan installation under `/opt/nvidia/holoscan`.
-- Install native x86_64 NVIDIA CUDA Compiler (NVCC) tools and NVIDIA's Cross-SBSA packages normally.
-  Together they provide the compiler that runs on the builder and the CUDA headers and libraries for
-  the target.
-- By default, resolve and extract other AArch64 development packages into a separate target package
-  root. This keeps target packages out of the builder's package database and works for packages that
-  are not declared multiarch-compatible, including the TensorRT packages used below.
-- Install an AArch64 package directly with apt only after confirming that it is marked
-  `Multi-Arch: same`, uses architecture-qualified paths, does not conflict with an installed amd64
-  package, and does not require target maintainer scripts during installation. Many Ubuntu runtime
-  libraries meet these requirements, but NVIDIA packages must be checked individually.
-
-The dependencies listed as `Recommends` by the Holoscan package are optional. Do not copy the full
-list into the sysroot automatically. Add the development packages required by the operators and
-backends that the application uses, and install their matching runtime packages on the target
-system.
+Install native x86_64 NVCC and NVIDIA's Cross-SBSA packages normally. Keep architecture-specific
+optional dependencies out of the builder's package database unless their multiarch compatibility
+has been verified. The architecture-independent `libexpected-dev` package used above contains
+headers and CMake files and can be extracted alongside Core.
 
 The safe default workflow for additional AArch64 packages is:
 
@@ -611,35 +617,15 @@ APT_TARGET_OPTIONS=(
 )
 ```
 
-Define `TARGET_PACKAGES` before running the resolver, as shown in the TensorRT example below. Keep
-every entry version-pinned, and review the simulated package transaction before downloading.
+Define `TARGET_PACKAGES` with the required AArch64 component packages and exact versions before
+running the resolver. Review the simulated package transaction before downloading.
 Packages that rely on maintainer scripts, alternatives, or triggers to construct their installed
 layout might not work through extraction alone. For those packages, reproduce the required links
 explicitly or use a sysroot captured from the exact target root filesystem.
 
-#### Add TensorRT development files
-
-The Holoscan package recommends a TensorRT runtime, but its package metadata does not require the
-TensorRT development headers. An application that links the Holoscan inference operator needs the
-matching AArch64 development packages. For the CUDA 13.0 workflow pinned by this tutorial, extend
-the package manifest with an explicitly compatible TensorRT release. See NVIDIA's
-[TensorRT Debian installation guide](https://docs.nvidia.com/deeplearning/tensorrt/latest/installing-tensorrt/install-debian.html)
-for the complete package set:
+For example, after defining `TARGET_PACKAGES`:
 
 ```bash
-TENSORRT_DEB_VERSION=10.13.3.9-1+cuda13.0
-
-TARGET_PACKAGES=(
-  "libnvinfer-dev:arm64=${TENSORRT_DEB_VERSION}"
-  "libnvinfer-headers-dev:arm64=${TENSORRT_DEB_VERSION}"
-  "libnvinfer10:arm64=${TENSORRT_DEB_VERSION}"
-  "libnvinfer-plugin-dev:arm64=${TENSORRT_DEB_VERSION}"
-  "libnvinfer-headers-plugin-dev:arm64=${TENSORRT_DEB_VERSION}"
-  "libnvinfer-plugin10:arm64=${TENSORRT_DEB_VERSION}"
-  "libnvonnxparsers-dev:arm64=${TENSORRT_DEB_VERSION}"
-  "libnvonnxparsers10:arm64=${TENSORRT_DEB_VERSION}"
-)
-
 # Review the dependency closure without changing the builder
 apt-get "${APT_TARGET_OPTIONS[@]}" update
 apt-get "${APT_TARGET_OPTIONS[@]}" \
@@ -657,68 +643,16 @@ while IFS= read -r -d '' package; do
 done < <(find "${TARGET_APT_ROOT}/archives" -maxdepth 1 -name '*.deb' -print0)
 ```
 
-The manifest pins TensorRT's development, header, and runtime package closure because apt can
-otherwise select transitive packages built for a newer CUDA or TensorRT release. TensorRT 10.13.3
-packages are not declared `Multi-Arch: same`, so keep them in the extracted target root instead of
-installing them alongside any amd64 TensorRT packages.
-
-The previously extracted Holoscan package remains in `.cross/holoscan-root`; do not add it to this
-manifest. Its package metadata requires an AArch64 CUDA compiler package, while this cross-build
-already uses native x86_64 NVCC with the Cross-SBSA target packages. Use the same TensorRT release
-on the target system.
-
-TensorRT's Debian packages provide the headers and libraries, but a consuming project must also
-provide CMake package discovery that defines the imported targets expected by Holoscan. If the
-project has a `FindTensorRT.cmake` module that defines `TensorRT::nvinfer_plugin` and
-`TensorRT::nvonnxparser`, configure it before Holoscan and link the inference operator:
+Request each additional component explicitly in CMake. For example, an inference application uses:
 
 ```cmake
-list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-find_package(TensorRT REQUIRED MODULE)
-find_package(holoscan 4.6 REQUIRED CONFIG)
-
-target_link_libraries(my_holoscan_app PRIVATE holoscan::ops::inference)
+find_package(holoscan 5.0 REQUIRED CONFIG COMPONENTS core inference)
+target_link_libraries(my_holoscan_app PRIVATE holoscan::core holoscan::op_inference)
 ```
 
-#### Add PyTorch development files
-
-PyTorch is not supplied by the generic SBSA apt package set used above. Obtain an AArch64 PyTorch
-wheel that matches the target's JetPack or IGX-SW release, CUDA version, Python application binary
-interface, and the version supported by the selected Holoscan release. Check the
-[Holoscan SDK installation guide](https://docs.nvidia.com/holoscan/sdk-user-guide/setup/sdk-installation)
-for the tested LibTorch version. Do not install or import the AArch64 wheel on the x86_64 builder. A
-wheel is a ZIP archive, so extract it into a separate target prefix:
-
-```bash
-PYTORCH_WHEEL=/path/to/the/matching-aarch64-pytorch.whl
-PYTORCH_TARGET_ROOT="$PWD/.cross/pytorch-root"
-
-python3 -m zipfile -e "${PYTORCH_WHEEL}" "${PYTORCH_TARGET_ROOT}"
-test -f "${PYTORCH_TARGET_ROOT}/torch/share/cmake/Torch/TorchConfig.cmake"
-file -L "${PYTORCH_TARGET_ROOT}/torch/lib/libtorch.so"
-```
-
-The final command must report an ARM AArch64 library. Point CMake at the extracted configuration,
-discover Torch before Holoscan, and explicitly link the Holoscan Torch backend:
-
-```cmake
-find_package(Torch REQUIRED CONFIG)
-find_package(holoscan 4.6 REQUIRED CONFIG)
-
-target_link_libraries(my_holoscan_app PRIVATE
-  holoscan::ops::inference
-  holoscan::infer::torch)
-```
-
-Pass the path while configuring because the shell variable is not automatically visible in CMake:
-
-```bash
-cmake ... \
-  -DTorch_DIR="$PWD/.cross/pytorch-root/torch/share/cmake/Torch"
-```
-
-ONNX Runtime follows the same pattern: provide a compatible AArch64 SDK, make its CMake package
-define `ONNXRuntime::ONNXRuntime`, and link `holoscan::infer::onnx_runtime` when that backend is used.
+This example does not validate optional components or their backend dependencies. Use the SDK 5
+component documentation and package metadata to choose the matching development packages and
+runtime versions; SDK 4 inference backend targets and package lists should not be reused unchanged.
 
 #### Add the package root to CMake and validate it
 
@@ -748,12 +682,10 @@ validate these dependencies. Check representative inputs and the completed execu
 using host `ldd`:
 
 ```bash
-file -L .cross/target-root/usr/lib/aarch64-linux-gnu/libnvinfer.so
-# Run this check only when the PyTorch target prefix was created.
-file -L .cross/pytorch-root/torch/lib/libtorch.so
+# Check each optional library actually used by the application.
 file build-cross/install/bin/my_holoscan_app
 readelf --dynamic build-cross/install/bin/my_holoscan_app \
-  | grep -E 'libholoscan_infer|libnvinfer|libtorch|libonnxruntime'
+  | grep libholoscan
 
 if find .cross/target-root -type f \
     \( -name '*.so' -o -name '*.so.*' \) -print0 \
@@ -771,7 +703,7 @@ replace that target-side test.
 
 Cross-compilation proves that the application configures and links for AArch64. It does not prove
 runtime behavior. The target must provide a compatible Linux application binary interface (ABI),
-CUDA runtime/driver, matching Holoscan 4.6 libraries, and every application-specific shared library.
+CUDA runtime/driver, matching Holoscan 5.0 libraries, and every application-specific shared library.
 Complete [Deploy and validate on a Thor target](#deploy-and-validate-on-a-thor-target) to validate
 the executable on Jetson AGX Thor or IGX Thor hardware. Jetson or IGX camera, multimedia, networking,
 and other BSP-specific dependencies require matching packages and may require a sysroot from the
