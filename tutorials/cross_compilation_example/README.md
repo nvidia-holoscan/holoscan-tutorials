@@ -72,7 +72,6 @@ This tutorial covers two workflows:
 
 - An x86_64 Linux host with Docker Engine and BuildKit.
 - Internet access while building the image.
-- Python 3 with virtual-environment support for the direct Holoscan CLI workflow.
 - `file` and `readelf` (`binutils`) on the host for the final artifact checks.
 - Optional: A Jetson AGX Thor Developer Kit with JetPack 7.2.1, or an IGX Thor Developer Kit or
   Developer Kit Mini with IGX-SW 2.0, for deployment and runtime validation.
@@ -87,43 +86,13 @@ appropriate hardware-specific architecture, as described in
 
 ### Using the Holoscan CLI
 
-The CLI workflow requires a repository-level CMake build that includes this tutorial.
-This standalone repository does not provide that build entry point; follow the
-[manual Docker and CMake workflow](#manual-docker-and-cmake-workflow) instead.
-
-Create a Python virtual environment and install the Holoscan CLI version pinned by this tutorial:
-
-```bash
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install --extra-index-url https://pypi.nvidia.com \
-  "holoscan-cli==5.0.0rc3"
-```
-
-From the repository root, build and install the example with one command:
-
-```bash
-HOLOSCAN_CLI_BASE_SDK_VERSION=5.0.0 \
-  holoscan install cross_compilation_example
-```
-
-`HOLOSCAN_CLI_BASE_SDK_VERSION` supplies the SDK image version that the standalone CLI does not
-assume.
-
-The default `cross_compile` mode builds the x86_64 cross-compilation container, configures the
-project with `aarch64-cross-sbsa.cmake`, compiles an AArch64 executable, and installs it to
-`install/bin/cross_compilation_example`. The mode uses Docker's standard `runc` runtime because a
-GPU is not required for this build.
-
-Continue with [Verify the result](#verify-the-result), using the CLI artifact path:
-
-```bash
-CROSS_COMPILED_APP=install/bin/cross_compilation_example
-```
+The Holoscan CLI cannot currently build this example from this repository because it requires a
+repository-level CMake build. Use the
+[manual Docker and CMake workflow](#manual-docker-and-cmake-workflow).
 
 ### Manual Docker and CMake workflow
 
-The following steps show each Docker and CMake command performed by the CLI workflow.
+Build and install the example using Docker and CMake.
 
 #### Build the cross-compilation image
 
