@@ -6,7 +6,7 @@ optionally call it from Python, exercise it with deterministic tests, and finish
 package that another Holoscan project can install.
 
 By the end, you'll have an independently versioned repository and a repeatable development
-workflow—not just a collection of source files.
+workflow.
 
 ## 1. Holoscan Modules in Context
 
@@ -18,7 +18,7 @@ processing units, called *operators*, into a graph that the SDK compiles and exe
 
 ### What is a Holoscan Module?
 
-A **Holoscan Module** is a redistributable library that extends `holoscan::core` with a related
+A **Holoscan Module** is a redistributable project library that extends `holoscan::core` with a related
 set of operators, resources, and helpers. For example, a camera vendor might collect its capture
 and control operators in `holoscan-my-camera`, while an imaging team might publish reconstruction
 operators as `holoscan-image-reconstruction`.
@@ -30,7 +30,7 @@ is not a reusable library does not need to become a Module.
 This tutorial creates a **standalone Module**: an independent `holoscan-<name>` repository with
 its own build, tests, package, and CI.
 
-In SDK 5.0, Module operators are implemented in C++. The scaffold can also add Python bindings: a
+In Holoscan SDK 5.0, Module operators are implemented in C++. The scaffold can also add Python bindings: a
 small extension that registers the C++ operators with the SDK operator registry so Python
 applications can use them. It does not generate Python-implemented operators or wheels.
 
@@ -63,10 +63,10 @@ recommended because it keeps the SDK, CUDA, compiler, and system dependencies to
 
 Install:
 
-- Python 3.12 through 3.14 for the exact `holoscan-cli==5.0.0rc3` commands in this tutorial
-- [uv](https://docs.astral.sh/uv/getting-started/installation/), or a Python virtual environment
+- Python 3.12, 3.13, or 3.14 for the exact `holoscan-cli` commands in this tutorial
 - Docker with the Buildx plugin
-- NVIDIA Container Toolkit 1.12.2 or later
+- NVIDIA Container Toolkit 1.14 or later
+- (Optional) [uv](https://docs.astral.sh/uv/getting-started/installation/), or a Python virtual environment
 
 CLI interpreter support does not establish SDK, CUDA, or Module compatibility; validate those
 separately.
@@ -76,10 +76,10 @@ separately.
 A native build is useful when you already maintain a compatible SDK toolchain on the host. In
 addition to Python and uv, install:
 
-- Holoscan SDK 5.0.0 or later (`apt install holoscan`, the `holoscan-cuda-13` alias)
-- CUDA Toolkit 13.x matching the SDK
+- Holoscan SDK 5.0.0 or later (`apt install holoscan`)
+- CUDA Toolkit 13.0 or later, matching Holoscan SDK 5
 - CMake 4.0 or later
-- a C++20-capable compiler
+- GCC 13 or another a C++20-capable compiler
 - GoogleTest and `clang-format`
 
 For the optional Python bindings, also install Python 3.12 or later with development headers,
@@ -87,8 +87,8 @@ pytest, and the Holoscan SDK Python package for the same SDK version, importable
 The SDK Debian packages don't include the Python package; the development container does. CMake
 downloads nanobind 3.0.1 while configuring when it isn't installed, which needs network access.
 
-The CLI version does not select the SDK version. This tutorial uses the CLI `5.0.0rc3` preview and
-explicitly selects SDK `5.0.0`.
+The CLI version does not select the SDK version. This tutorial uses the latest Holoscan CLI and
+explicitly selects Holoscan SDK `5.0.0`.
 
 ## 3. Create an External Module
 
@@ -99,8 +99,19 @@ published package or immutable source location.
 ### 3.1 Preview and generate the project
 
 Start in the directory that will contain the new repository. Pass the friendly, unprefixed name
-`my-module`; the CLI will derive `holoscan-my-module` and the related C++ identifiers. Before we
-write anything to disk, let's preview exactly what the CLI plans to create:
+`my-module`; the CLI will derive `holoscan-my-module` and the related C++ identifiers.
+
+**Quick Start**: Run the following in a standard Python environment for an interactive setup:
+
+```bash
+pip install 'holoscan-cli[create]>=5.0.0'
+holoscan create my-module    # simplified command for interactive setup
+```
+
+**(Alternative) Non-interactive Setup with `uv`**: Before we
+write anything to disk, let's preview exactly what the CLI plans to create.
+
+With `uv`:
 
 ```bash
 uvx --python 3.12 --index https://pypi.nvidia.com \
@@ -144,16 +155,17 @@ Take a moment to review the values before moving on; renaming a repository, pack
 and operator together is much easier now than after consumers depend on them.
 
 To also use the operators from Python, pass `--language cpp python` instead. This adds Python
-bindings for the C++ operator, a Python version of the example, and a pytest suite;
-[section 4.5](#45-call-the-operator-from-python) walks through them. `--language python` on its
-own is rejected because SDK 5.0 Modules don't support Python-implemented operators yet. Use a CLI
-4.x release when scaffolding a Module that targets the SDK 4.x API.
+bindings for the C++ operator, a Python version of the example, and a `pytest` suite;
+[section 4.5](#45-call-the-operator-from-python) walks through them.
+
+Note that `--language python` on its
+own is rejected because Holoscan SDK 5.0 does not yet support Python-implemented operators.
 
 ### 3.2 Set up the generated development environment
 
 Now that the repository exists, let's set up its development tools. The generated
 `requirements-cli.txt` and `pyproject.toml` both pin the CLI used to create the project, keeping
-host and container commands on the same version. With uv:
+host and container commands on the same version. With `uv`:
 
 ```bash
 uv run holoscan version --json
@@ -164,7 +176,7 @@ The generated project sends only the CLI development dependency to NVIDIA's Pyth
 leaves other packages on PyPI. `pyproject.toml` has `package = false`: uv is provisioning the
 development environment, not building a Python version of your Module.
 
-If uv is not available, create the same isolated environment with pip:
+If `uv` is not available, create the same isolated environment with `pip`:
 
 ```bash
 python3.12 -m venv .venv
@@ -216,7 +228,7 @@ Key things to notice:
 
 - `metadata.json` is the shared identity for discovery, dependency resolution, and packaging.
 - the top-level CMake project builds the operator, example application, tests, and DEB package;
-- the Dockerfile captures the SDK 5.0 and CUDA 13 development environment; and
+- the Dockerfile captures the Holoscan SDK 5.0 and CUDA 13 development environment; and
 - the example and tests consume the same public operator surface that another project will use.
 
 Before publishing, update `metadata.json`, especially `source_repository`, authors, license,
@@ -232,7 +244,7 @@ the edit-build-debug loop.
 
 ### 4.1 Implement a typed SDK 5 operator
 
-Let's begin with the reusable part: the operator. SDK 5 operators declare typed ports as members,
+Let's begin with the reusable part: the operator. Holoscan SDK operators declare typed ports as members,
 bind them during `setup()`, and return errors from `compute()` through `expected`. The generated
 pass-through operator follows this shape:
 
@@ -291,7 +303,7 @@ give those parameters a typed home rather than embedding application policy in `
 
 ### 4.2 Compose, compile, and run a graph
 
-With the operator defined, we can place it in a pipeline. SDK 5 applications first compose a
+With the operator defined, we can place it in a pipeline. Holoscan SDK applications first compose a
 `Graph`, compile it into an `ExecutionPlan`, inspect any diagnostics, and only then run the
 accepted plan:
 
@@ -447,7 +459,7 @@ unset HOLOSCAN_CLI_BUILD_PARENT_DIR
 
 When these commands finish, `build-native/` should contain the native artifacts while the normal
 container build remains untouched. Select a specific SDK with `--local-sdk-root /path/to/sdk` or
-`HOLOSCAN_SDK_ROOT`. SDK 5 installs use architecture-qualified layouts such as `install-x86_64`
+`HOLOSCAN_SDK_ROOT`. Holoscan SDK installs use architecture-qualified layouts such as `install-x86_64`
 and `install-aarch64`.
 
 If you need to work directly with CMake, the equivalent starting point is:
@@ -458,7 +470,7 @@ cmake --build build -j"$(nproc)"
 ctest --test-dir build --output-on-failure -L unit
 ```
 
-### 4.7 Declare dependencies on other Modules
+### 4.7 (Optional) Declare dependencies on other Modules
 
 Modules become more useful when they compose cleanly. If this Module needs an operator from
 another Module, declare that relationship in `metadata.json:module.dependencies[]` and pin the
@@ -482,7 +494,7 @@ external source to an immutable full commit SHA:
 }
 ```
 
-CLI `5.0.0rc3` requires a full commit SHA; mutable tags and branches are rejected. A full SHA
+Holoscan CLI requires a full commit SHA; mutable tags and branches are rejected. A full SHA
 lets a teammate or CI runner resolve the same source later. The
 [Use a Module tutorial](../use-a-module/README.md) shows how to override that pin with a local
 checkout during development without weakening the committed dependency.
@@ -506,8 +518,8 @@ dpkg-deb --info holoscan-my-module_0.1.0_$(dpkg --print-architecture).deb
 dpkg-deb --contents holoscan-my-module_0.1.0_$(dpkg --print-architecture).deb
 ```
 
-The Debian package contains the C++ operators only. If the Module has Python bindings, install the
-Python package from a CMake build tree by requesting its component:
+The Debian package contains the C++ operators only. If the Module has Python bindings,
+use it by appending its installation path to your local `PYTHONPATH` environment variable:
 
 ```bash
 cmake --install build --component holoscan-my-module-python --prefix "$PWD/build/install"
@@ -517,8 +529,8 @@ PYTHONPATH="$PWD/build/install/lib/python3.12/site-packages:$PYTHONPATH" \
 
 Pass `--prefix` because the default `/usr/local` prefix isn't writable in the development container
 and isn't on Ubuntu's Python path. A prefix inside `build/` stays out of Git. Replace `python3.12`
-if you use a different Python version. SDK 5.0 Modules can't build wheels or provide a
-`holoscan.my_module` import alias yet.
+if you use a different Python version. Note that Module projects based on Holoscan SDK 5.0
+do not fully support building Python wheels for distribution yet.
 
 The final proof is installation in a clean consumer where the Holoscan Debian dependency is
 available. Extracting the archive may be useful for inspection, but it does not prove that APT can
@@ -555,7 +567,7 @@ fast feedback from hardware-backed validation:
 | Job | Runner | What it checks |
 | --- | --- | --- |
 | Lint | GitHub-hosted CPU | ruff, metadata validation, and C++ formatting |
-| CMake configure | SDK 5 container on a CPU runner | the generated CMake graph without building or using a GPU |
+| CMake configure | Holoscan SDK container on a CPU runner | the generated CMake graph without building or using a GPU |
 | Build and test | self-hosted GPU | the C++ build and CTest suite in the SDK container |
 
 Treat this workflow as a useful baseline, not a finished release gate. Update the runner labels
@@ -632,7 +644,7 @@ path, request stop and wait for the `RunSession` to finish.
 ### CMake cannot find Holoscan
 
 For the simplest reproducible environment, use the generated container. For a native build,
-confirm that SDK 5.0 or later is installed and select it explicitly:
+confirm that Holoscan SDK 5.0 or later is installed and select it explicitly:
 
 ```bash
 holoscan build my_module_pipeline --language cpp --local --local-sdk-root /path/to/sdk --dryrun --verbose
