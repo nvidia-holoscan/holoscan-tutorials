@@ -85,10 +85,10 @@ GPU using just-in-time (JIT) compilation. When the deployment GPU is known, repl
 appropriate hardware-specific architecture, as described in
 [Choose a CUDA target architecture](#choose-a-cuda-target-architecture).
 
-### Using the Holoscan CLI directly
+### Using the Holoscan CLI
 
-The CLI workflow in this section uses a HoloHub checkout containing
-this tutorial. In the standalone `holoscan-tutorials` repository, follow the
+The CLI workflow requires a repository-level CMake build that includes this tutorial.
+This standalone repository does not provide that build entry point; follow the
 [manual Docker and CMake workflow](#manual-docker-and-cmake-workflow) instead.
 
 Create a Python virtual environment and install the Holoscan CLI version pinned by this tutorial:

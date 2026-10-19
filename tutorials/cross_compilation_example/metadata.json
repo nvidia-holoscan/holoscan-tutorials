@@ -48,7 +48,7 @@
         },
         "run": {
           "command": "file <build_dir>/tutorials/cross_compilation_example/cross_compilation_example",
-          "workdir": "<holohub_root>",
+          "workdir": "",
           "docker_run_args": [
             "--runtime",
             "runc",
