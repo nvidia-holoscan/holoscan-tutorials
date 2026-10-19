@@ -60,7 +60,7 @@ build glue.
    agents find your dependency choices by searching the Holoscan ecosystem instead of
    guessing repo names. A vendored copy puts the entire burden of discovery on you.
 3. **Drop-in.** The Holoscan CLI reads Module metadata and prepares source declarations
-   for your CMake build (Path A). Binary consumers get the same operators
+   for your CMake build (Path C). Binary consumers get the same operators
    via standard `pip install` or `apt install` plus a single `find_package` (C++) or
    `import` (Python). No vendor-specific build glue.
 
@@ -79,7 +79,7 @@ each path's section below calls out anything extra it needs.
   `metadata.json:module.holoscan_sdk.minimum_required_version`.
 - [Python >=3.12](https://www.python.org/downloads/) for Holoscan CLI.
   Binary consumers follow the Python requirements of their SDK and module wheels.
-- For Path A, install the [Holoscan CLI](https://github.com/nvidia-holoscan/holoscan-cli)
+- For Path C, install the [Holoscan CLI](https://github.com/nvidia-holoscan/holoscan-cli)
   in the consuming project's development environment. The examples use `holoscan-cli==5.0.0rc3`
   from NVIDIA's Python index, as in the
   [Create a Module tutorial](../create-a-module/README.md#32-set-up-the-generated-development-environment).
@@ -108,19 +108,19 @@ Pick the path that matches your project, then jump to the corresponding section.
 
 | Your project is… | Use… |
 | --- | --- |
-| A standalone C++ application using a module binary package | [Path B (§5)](#5-path-b--external-c-project-binary-install) |
-| A standalone C++ project using module sources | [Path D (§7)](#7-path-d--source-level-embedding-in-a-fully-external-project) |
-| A Holoscan sample application using Holoscan CLI dependency metadata | [Path A (§4)](#4-path-a--consume-from-a-holoscan-project-cli-workflow) |
-| Another Holoscan Module declaring a transitive dependency with Holoscan CLI | [Path A (§4.7)](#47-module-to-module-transitive-dependencies) |
-| A pure-Python application or notebook | [Path C (§6)](#6-path-c--external-python-project-pip-install) |
+| A standalone C++ application using a module binary package | [Path A (§4)](#4-path-a--external-c-project-binary-install) |
+| A standalone C++ project using module sources | [Path B (§5)](#5-path-b--source-level-embedding-in-a-fully-external-project) |
+| A Holoscan sample application using Holoscan CLI dependency metadata | [Path C (§6)](#6-path-c--consume-from-a-holoscan-project-cli-workflow) |
+| Another Holoscan Module declaring a transitive dependency with Holoscan CLI | [Path C (§6.7)](#67-module-to-module-transitive-dependencies) |
+| A pure-Python application or notebook | [Path D (§7)](#7-path-d--external-python-project-pip-install) |
 
 
-## 5. Path B — External C++ Project (Binary Install)
+## 4. Path A — External C++ Project (Binary Install)
 
 Standalone Holoscan projects can consume Module binaries like any other binary package. A Holoscan Module
 created from template can support Debian C++ binary packaging out of the box.
 
-### 5.1 Install the binary
+### 4.1 Install the binary
 
 Review the Module's `metadata.json:module.binary_packages` for recommended installation commands.
 For example, the installation command to add to your Dockerfile or host setup script might install from a public APT repository:
@@ -130,7 +130,7 @@ For example, the installation command to add to your Dockerfile or host setup sc
 apt install holoscan-my-sensor
 ```
 
-### 5.2 CMake integration
+### 4.2 CMake integration
 
 In your project's `CMakeLists.txt`:
 
@@ -154,7 +154,7 @@ If the package is not found, ensure the install prefix is on `CMAKE_PREFIX_PATH`
 that you installed via the system package manager into a default-searched prefix
 (typically `/usr`). Report any issues to the appropriate module repository maintainer.
 
-## 7. Path D — Source-Level Embedding in a Fully External Project
+## 5. Path B — Source-Level Embedding in a Fully External Project
 
 Projects that rely directly on CMake without Holoscan CLI tooling can use the CMake standard
 [`FetchContent`](<https://cmake.org/cmake/help/latest/module/FetchContent.html>) function to fetch and build open-source Holoscan Modules
@@ -179,7 +179,7 @@ Building from source may require additional dependency setup and custom configur
 options. Please refer to the individual Module's guidance on requirements
 and best practices. A binary installation is usually a simpler choice for fully external projects, when available.
 
-## 4. Path A — Consume from a Holoscan Project (CLI Workflow)
+## 6. Path C — Consume from a Holoscan Project (CLI Workflow)
 
 As an alternative to writing CMake code yourself, the Holoscan CLI provides a simplified
 interface to generate CMake `FetchContent` strings from CLI standard `metadata.json`.
@@ -191,7 +191,7 @@ to Holoscan CLI and CMake.
 This approach may be particularly useful for layered, monolithic projects based on Holoscan CLI
 that have many module dependencies.
 
-### 4.1 Select a Holoscan project
+### 6.1 Select a Holoscan project
 
 Work from the root of the repository that consumes the Module. Application examples live in
 [Holoscan Applications](https://github.com/nvidia-holoscan/holoscan-applications). Or, follow
@@ -202,7 +202,7 @@ Follow the consuming project's README to prepare its development environment.
 Run `holoscan list` to see projects in that checkout. The examples below assume an application
 named `my_app`; substitute your project's selector and a Module compatible with its SDK.
 
-### 4.2 Declare the dependency
+### 6.2 Declare the dependency
 
 Edit your subproject's `metadata.json`. For an application:
 
@@ -237,12 +237,12 @@ metadata. Field reference: the `module_dependency` definition in the Holoscan CL
   Holoscan CLI requires an immutable SHA. Mutable tags and branches are rejected.
 - **`provides_operators`** — operators this dependency contributes. The generated manifest
   records their provider; the consuming CMake project controls which Modules are fetched and
-  which operators are enabled (`OP_<name>=ON`), as shown in §4.3.
+  which operators are enabled (`OP_<name>=ON`), as shown in §6.3.
 - **`version`** (optional) — informational; not enforced by the resolver today.
 
 Those metadata details are used by the Holoscan CLI in the next section.
 
-### 4.3 Build
+### 6.3 Build
 
 The consuming project owns its CMake dependency integration. Make the CLI's bundled
 [`HoloHubConfigHelpers.cmake`](https://github.com/nvidia-holoscan/holoscan-cli/blob/main/src/holoscan_cli/cmake/HoloHubConfigHelpers.cmake)
@@ -271,11 +271,11 @@ holoscan build my_app
 **How it works:** The Holoscan CLI reads `dependencies.modules[]` from the selected project's
 metadata and writes `external_operators_manifest.cmake` into its build directory before running
 CMake. The manifest declares each Module's source URL and commit. The CMake integration above
-fetches the required Module and enables `my_sensor_op`; link its exported target as shown in §4.5.
+fetches the required Module and enables `my_sensor_op`; link its exported target as shown in §6.5.
 Projects using CMake directly can instead declare the source themselves with
-[Path D](#7-path-d--source-level-embedding-in-a-fully-external-project).
+[Path B](#5-path-b--source-level-embedding-in-a-fully-external-project).
 
-### 4.4 Iterate against a local working copy
+### 6.4 Iterate against a local working copy
 
 When iterating against an unreleased Module, the source override is
 `HOLOSCAN_CLI_LOCAL_<SANITIZED_MODULE_NAME>`: replace non-alphanumeric runs in the
@@ -302,7 +302,7 @@ Unset it to return to the pinned dependency. Standalone modules use the same
 options with `holoscan build <app>` and can persist the variable name in
 `tool.holoscan.forward-env`; keep machine-specific mount paths on the command line.
 
-### 4.5 Use the operators in your code
+### 6.5 Use the operators in your code
 
 Python application:
 
@@ -329,7 +329,7 @@ its README) and link via the Module's exported targets in your application's
 target_link_libraries(my_app PRIVATE holoscan::my_sensor_op)
 ```
 
-### 4.6 Discover what's available
+### 6.6 Discover what's available
 
 ```bash
 holoscan list   # Lists projects in this checkout
@@ -343,13 +343,13 @@ The list is a local project inventory; visit the
 published projects. JSON output includes `schema_version: 1`. `env-check` can
 exit nonzero when dependencies are missing.
 
-### 4.7 Module-to-module (transitive) dependencies
+### 6.7 Module-to-module (transitive) dependencies
 
 If you are building a Holoscan Module that itself depends on another Module, use the
 `module.dependencies[]` array in your module's `metadata.json` — it follows the same
-schema as the `application.dependencies.modules[]` shown in §4.2 above. Refer to the
+schema as the `application.dependencies.modules[]` shown in §6.2 above. Refer to the
 "Create a Holoscan Module" tutorial for the full schema and SHA-pinning discipline,
-and to §4.4 above for mounted-source iteration.
+and to §6.4 above for mounted-source iteration.
 
 From a standalone module, we recommend using a `uv` environment with Python >=3.12:
 
@@ -362,12 +362,12 @@ uv run holoscan build my_sensor_pipeline
 For the [pip fallback](../create-a-module/README.md#32-set-up-the-generated-development-environment), activate
 the module's `.venv` with `source .venv/bin/activate` and omit `uv run`.
 
-Enable the dependency's operators in your build graph, just as in §4.3. To work
+Enable the dependency's operators in your build graph, just as in §6.3. To work
 from another directory, place `--project-root /path/to/module` before `build`.
 See [Create a Module](../create-a-module/README.md) for installation. For a local
 build, select the SDK explicitly with `--local-sdk-root /path/to/sdk`.
 
-## 6. Path C — External Python Project (Pip Install)
+## 7. Path D — External Python Project (Pip Install)
 
 Module wheels available on PyPI can be installed like any other PyPI dependency:
 
@@ -415,8 +415,8 @@ if __name__ == "__main__":
 | Install binary (Python) | `pip install holoscan-<name>` |
 | Use from C++ | `find_package(holoscan-<name> REQUIRED)` + `target_link_libraries(... holoscan::<target>)` |
 | Use from Python | `from holoscan.my_module import MyOp` (substitute your Module name) |
-| Use CLI-declared sources (Path A) | Include the generated manifest and call `FetchContent_MakeAvailable(...)` in the consuming CMake project |
-| Embed via source — fully external (Path D) | `FetchContent_Declare(...)` + `FetchContent_MakeAvailable(...)` |
+| Use CLI-declared sources (Path C) | Include the generated manifest and call `FetchContent_MakeAvailable(...)` in the consuming CMake project |
+| Embed via source — fully external (Path B) | `FetchContent_Declare(...)` + `FetchContent_MakeAvailable(...)` |
 | Inspect a standalone Module | `holoscan --project-root /path/to/module list --json` |
 | Discover published Holoscan Modules | [HoloHub Modules catalog](https://nvidia-holoscan.github.io/holohub/modules/) |
 
@@ -431,12 +431,12 @@ if __name__ == "__main__":
 - **Resolver rejects a ref that is not a 40-character commit SHA.** Replace the tag or branch
   in `source.ref` with the commit SHA it resolves to.
 - **`HOLOSCAN_CLI_LOCAL_*` override has no effect.** Derive the suffix from the
-  dependency `name` as described in §4.4, mount the Module into the project
+  dependency `name` as described in §6.4, mount the Module into the project
   container, and set the variable there to the container path. Add `--forward-env HOLOSCAN_CLI_LOCAL_<NAME>` to forward the export;
   the variable must contain the mounted container path.
 - **The operator is not built even though you declared it.** Under FetchContent +
   `PROJECT_IS_TOP_LEVEL` defaults, the Module's `BUILD_ALL` is `OFF`, so only the
-  operators marked with `OP_<op>=ON` get built. In either source-build path (A or D), pass
+  operators marked with `OP_<op>=ON` get built. In either source-build path (B or C), pass
   `-DOP_<op>=ON` on the configure line or `set(...)` it before
   `FetchContent_MakeAvailable`.
 - **CMake fails with "No content recorded" inside `FetchContent_MakeAvailable`.** The external operators manifest is stale. Delete
