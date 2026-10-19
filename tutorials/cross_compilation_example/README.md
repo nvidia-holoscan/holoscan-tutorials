@@ -202,7 +202,7 @@ executable.
 ### Deploy and validate on a Thor target
 
 Prepare either supported target baseline listed in [Background](#background), then install the
-Holoscan 5.0 Core CUDA 13 Debian package by following the
+Holoscan SDK Core 5.0 Debian package by following the
 [Holoscan SDK installation guide](https://docs.nvidia.com/holoscan/sdk-user-guide/setup/sdk-installation).
 If the NVIDIA SBSA repository is already configured on the target, the package used by this build
 can be installed directly:
@@ -398,7 +398,7 @@ printf '%s  %s\n' "${HOLOSCAN_DEB_SHA256}" "${HOLOSCAN_DEB}" | sha256sum --check
 
 #### Validate and extract the package
 
-SDK 5 Core also requires `libexpected-dev` (at least 1.1.0). Ubuntu 24.04 provides version
+The Holoscan SDK Core package also requires `libexpected-dev` (at least 1.1.0). Ubuntu 24.04 provides version
 `1.1.0-2` as an architecture-independent package. Download it using the host's Ubuntu repository
 and extract it into the same target root:
 
@@ -557,7 +557,7 @@ library from the build machine.
 
 ### Extend the target sysroot for optional SDK components
 
-SDK 5 splits Core, Inference, Vision, and Visualization into separate packages. This example
+Holoscan SDK 5 splits Core, Inference, Vision, and Visualization into separate packages. This example
 extracts only `holoscan-core-cuda-13`; the `holoscan` package is a metapackage that pulls in all
 components when installed with apt.
 
