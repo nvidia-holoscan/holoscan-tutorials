@@ -63,7 +63,7 @@ recommended because it keeps the SDK, CUDA, compiler, and system dependencies to
 
 Install:
 
-- Python 3.12 through 3.14 for the exact `holoscan-cli==5.0.0rc2` commands in this tutorial
+- Python 3.12 through 3.14 for the exact `holoscan-cli==5.0.0rc3` commands in this tutorial
 - [uv](https://docs.astral.sh/uv/getting-started/installation/), or a Python virtual environment
 - Docker with the Buildx plugin
 - NVIDIA Container Toolkit 1.12.2 or later
@@ -87,7 +87,7 @@ pytest, and the Holoscan SDK Python package for the same SDK version, importable
 The SDK Debian packages don't include the Python package; the development container does. CMake
 downloads nanobind 3.0.1 while configuring when it isn't installed, which needs network access.
 
-The CLI version does not select the SDK version. This tutorial uses the CLI `5.0.0rc2` preview and
+The CLI version does not select the SDK version. This tutorial uses the CLI `5.0.0rc3` preview and
 explicitly selects SDK `5.0.0`.
 
 ## 3. Create an External Module
@@ -104,7 +104,7 @@ write anything to disk, let's preview exactly what the CLI plans to create:
 
 ```bash
 uvx --python 3.12 --index https://pypi.nvidia.com \
-  --from 'holoscan-cli[create]==5.0.0rc2' \
+  --from 'holoscan-cli[create]==5.0.0rc3' \
   holoscan create my-module \
   --language cpp \
   --interactive false \
@@ -112,7 +112,7 @@ uvx --python 3.12 --index https://pypi.nvidia.com \
   --dryrun
 
 uvx --python 3.12 --index https://pypi.nvidia.com \
-  --from 'holoscan-cli[create]==5.0.0rc2' \
+  --from 'holoscan-cli[create]==5.0.0rc3' \
   holoscan create my-module \
   --language cpp \
   --interactive false \
@@ -482,7 +482,7 @@ external source to an immutable full commit SHA:
 }
 ```
 
-CLI `5.0.0rc2` requires a full commit SHA; mutable tags and branches are rejected. A full SHA
+CLI `5.0.0rc3` requires a full commit SHA; mutable tags and branches are rejected. A full SHA
 lets a teammate or CI runner resolve the same source later. The
 [Use a Module tutorial](../use-a-module/README.md) shows how to override that pin with a local
 checkout during development without weakening the committed dependency.
