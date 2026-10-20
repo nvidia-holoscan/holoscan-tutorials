@@ -2,7 +2,7 @@
 	"$schema": "urn:holohub:tutorial:v1",
 	"tutorial": {
 		"name": "Use a Holoscan Module",
-		"description": "End-to-end walkthrough for consuming a Holoscan Module from a HoloHub subproject (primary), an external C++ project via find_package, an external Python project via pip, or a non-HoloHub CMake project via source-level embedding. Includes module-to-module transitive dependencies.",
+		"description": "End-to-end walkthrough to consume a Holoscan SDK 5 Module from a standalone CLI project or external CMake project.",
 		"authors": [
 			{
 				"name": "Holoscan Team",
@@ -10,19 +10,16 @@
 			}
 		],
 		"language": ["C++", "Python"],
-		"version": "0.1.1",
+		"version": "0.2.0",
 		"changelog": {
+			"0.2.0": "Align the CLI and Python examples with SDK 5 and document verified dependency workflow limitations",
 			"0.1.1": "Align section numbers, path labels, and cross-references with the reordered consumption approaches",
 			"0.1.0": "Initial release"
 		},
 		"holoscan_sdk": {
-			"minimum_required_version": "4.2.0",
+			"minimum_required_version": "5.0.0",
 			"tested_versions": [
-				"4.2.0",
-				"4.3.0",
-				"4.4.0",
-				"4.5.0",
-				"4.6.0"
+				"5.0.0"
 			]
 		},
 		"platforms": [

@@ -10,8 +10,9 @@
 			}
 		],
 		"language": ["C++", "Python"],
-		"version": "0.3.0",
+		"version": "0.3.1",
 		"changelog": {
+			"0.3.1": "Verify CLI 5.0.0 workflows and clarify image prerequisites, Python build paths, and native CTest behavior",
 			"0.3.0": "Add the optional Python bindings workflow for SDK 5.0 Modules",
 			"0.2.0": "Update the standalone Module workflow for the Holoscan SDK 5.0 C++ API and Debian packaging",
 			"0.1.0": "Initial release"
