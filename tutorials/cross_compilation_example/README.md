@@ -97,8 +97,7 @@ Create a Python virtual environment and install the Holoscan CLI version pinned 
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install --extra-index-url https://pypi.nvidia.com \
-  "holoscan-cli==4.6.0"
+python -m pip install "holoscan-cli==5.0.0"
 ```
 
 From the repository root, build and install the example with one command:

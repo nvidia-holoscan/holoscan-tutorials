@@ -24,13 +24,17 @@ repos:
     hooks:
       - id: shellcheck
 
-  - repo: https://github.com/lycheeverse/lychee
-    rev: 2bba271688c1abb1503097a064e6c3bc1d1b6a9b # frozen: lychee-v0.24.2
+  - repo: local
     hooks:
       - id: lychee
         name: Check local Markdown links
+        # Installed from the PyPI wheel rather than the upstream lychee hook, whose
+        # cargo-binstall download hits GitHub API rate limits on shared networks.
+        entry: lychee
+        language: python
+        additional_dependencies:
+          - lychee-bin==0.24.2
         args:
-          - LYCHEE_VERSION=0.24.2
           - --offline
           - --hidden
           - --no-progress
@@ -41,9 +45,6 @@ repos:
         # Deleting an asset can break links in otherwise unchanged Markdown.
         always_run: true
         pass_filenames: false
-
-  - repo: local
-    hooks:
       - id: check-python-compile
         name: Check Python compilation
         entry: python -m py_compile
