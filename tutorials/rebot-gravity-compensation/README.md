@@ -2,15 +2,13 @@
 
 *Build a responsive gravity-compensation loop with Pinocchio, a Seeed Studio reBot arm, and a simple Holoscan graph in Python or C++.*
 
-NVIDIA Holoscan 5 is a platform release. Its largest component is Holoscan SDK (HSDK) 5.0, a ground-up rewrite of HSDK built for low-latency GPU-based and CPU-based perception and control workloads. This tutorial uses HSDK 5.0 to build and profile a robot control loop.
-
 Imagine effortlessly guiding a robot arm by hand while its motors carefully supply just the right amount of torque needed to support its weight and keep the robot upright. This simple interaction is a useful starting point for robots that learn by demonstration, manipulate objects, or work alongside people.
 
 Building a gravity-compensation loop is only possible by continuously calculating the inverse dynamics of the system based on precise models of all the links of the robot arm, their dimensions, masses, and moments of inertia. And importantly, this calculation requires knowing the current state of the robot. This calculation needs to be done rapidly, with low jitter, and low latency, so gravity-comp demos are an excellent proof of life for both the robot model and the runtime that's executing these algorithms.
 
-While working through this demo, we'll build custom Holoscan operators and wire them into a graph. We'll test the code on a real robot and use the SDK's built-in Nsight Systems annotations to inspect latency and jitter.
+The NVIDIA Holoscan 5 platform introduces the 5.0 release of Holoscan SDK (HSDK), a ground-up rewrite built for low-latency GPU-based and CPU-based perception and control workloads. This tutorial uses HSDK 5.0 to build and profile a robot control loop. While working through this demo, we'll build custom HSDK operators and wire them into a graph. We'll test the code on a real robot and use the SDK's built-in Nsight Systems annotations to inspect latency and jitter.
 
-This tutorial has been tested with HSDK 5.0.0.7 on x86 Ubuntu 24.04 and on Jetson Orin Nano and Jetson Thor running JetPack 7.2.1.
+This tutorial has been tested with HSDK 5.0 on x86 Ubuntu 24.04 and on Jetson Orin Nano and Jetson Thor running JetPack 7.2.
 
 ## Why HSDK 5.0?
 
@@ -18,11 +16,11 @@ A responsive robot needs more than a correct control algorithm; it needs a low-l
 
 **HSDK 5.0 brings low-latency control and high-throughput perception into one programming model**, with execution paths designed for CPU- and GPU-based workloads. Its goal is a transparent runtime: minimize avoidable framework overhead while making application execution explicit and inspectable.
 
-**Keep the control path focused on the work.** Holoscan uses partitions to group chains of operators on a single thread, avoiding cross-thread handoffs and unnecessary syscalls, reducing latency and jitter. Clock and data-arrival triggers express when work should run, while bounded, drop-oldest queues prevent outdated work from accumulating.
+**Keep the control path focused on the work.** HSDK uses partitions to group chains of operators on a single thread, avoiding cross-thread handoffs and unnecessary syscalls, reducing latency and jitter. Clock and data-arrival triggers express when work should run, while bounded, drop-oldest queues prevent outdated work from accumulating.
 
-**Bring existing algorithms and code rather than rewriting them for a framework.** HSDK 5.0 has a new, lightweight programming model that can be easily integrated into existing code bases, and it's never been easier to get data into and out of Holoscan graphs.
+**Bring existing algorithms and code rather than rewriting them for a framework.** HSDK 5.0 has a new, lightweight programming model that can be easily integrated into existing code bases, and it's never been easier to get data into and out of HSDK graphs.
 
-**Add perception without adopting a different programming model.** Whether you're handling 10 kHz CPU-centric motor control loops, heavy-throughput GPU algorithms, or AI inference, Holoscan lets developers and their agents clearly express execution intent using the same operators, ports, and graph APIs, logically splitting their workloads into separate graphs that can coexist, with the ability to pin partitions to dedicated CPU cores, CUDA green contexts, or even execute as a CUDA graph.
+**Add perception without adopting a different programming model.** Whether you're handling 10 kHz CPU-centric motor control loops, heavy-throughput GPU algorithms, or AI inference, HSDK lets developers and their agents clearly express execution intent using the same operators, ports, and graph APIs, logically splitting their workloads into separate graphs that can coexist, with the ability to pin partitions to dedicated CPU cores, CUDA green contexts, or even execute as a CUDA graph.
 
 **Inspect the plan, then measure the result.** Operators express their intent with timing contracts, and before the first run, the compiled plan exposes how the application will execute and catches configuration errors before deployment. This means agents and developers can quickly iterate on a design without ever deploying to real hardware. Plus, built-in NVTX annotations make operator execution and message transfers visible in Nsight Systems. Developers can examine host control-path latency and update jitter, then repeat those measurements as the application grows.
 
@@ -178,7 +176,7 @@ graph.partition("control").add(source).add(gravity).add(sink)
 
 A partition groups operators whose callbacks execute serially on one runtime-owned thread. Keeping all three in `control` avoids thread handoffs between reading state, calculating torque, and sending commands. The source sets the pace; the other operators follow the data. Depth-one, drop-oldest queues keep old samples from piling up.
 
-Holoscan compiles this description into an inspectable execution plan before we enable the motors:
+HSDK compiles this description into an inspectable execution plan before we enable the motors:
 
 ```python
 plan = hsdk.compile(build_graph(robot, controller))
@@ -232,30 +230,30 @@ nsys stats --report nvtx_sum build/profiles/gravity-python.nsys-rep
 
 ## Pinning Cores
 
-Holoscan's deployment API lets us pin the `control` partition to a CPU. For these runs, we put helper and profiler threads on another CPU, then used a temporary Linux cgroup to reserve both physical cores, including their SMT siblings, from other applications. This is a simple setup that needs no kernel rebuild, boot-parameter changes, or reboot, but interrupts, timers, and some kernel threads can still run on those cores.
+HSDK's deployment API lets us pin the `control` partition to a CPU. For these runs, we put helper and profiler threads on another CPU, then used a temporary Linux cgroup to reserve both physical cores, including their SMT siblings, from other applications. This is a simple setup that needs no kernel rebuild, boot-parameter changes, or reboot, but interrupts, timers, and some kernel threads can still run on those cores.
 
-We compared all four configurations, retaining more than one million cycles per run. Holoscan latency runs from entry into the first operator to entry into the last, excluding motor-command transmission. Solid curves show pinned runs; dotted curves show unpinned runs.
+We compared all four configurations, retaining more than one million cycles per run. HSDK latency runs from entry into the first operator to entry into the last, excluding motor-command transmission. Solid curves show pinned runs; dotted curves show unpinned runs.
 
-![Four-way x86 latency comparison: Holoscan C++ and Python, each with and without CPU pinning.](images/source-to-sink-latency.png)
+![Four-way x86 latency comparison: HSDK C++ and Python, each with and without CPU pinning.](images/source-to-sink-latency.png)
 
 
 | Implementation           | p50 (µs) | p99.99 (µs) | p99.999 (µs) |
 | ------------------------ | -------- | ----------- | ------------ |
-| Holoscan C++ pinned      | 7.1      | 17.2        | 20.7         |
-| Holoscan C++ unpinned    | 15.3     | 86.6        | 133.4        |
-| Holoscan Python pinned   | 93.0     | 142.6       | 1,014.0      |
-| Holoscan Python unpinned | 113.8    | 1,373.5     | 3,134.1      |
+| HSDK C++ pinned      | 7.1      | 17.2        | 20.7         |
+| HSDK C++ unpinned    | 15.3     | 86.6        | 133.4        |
+| HSDK Python pinned   | 93.0     | 142.6       | 1,014.0      |
+| HSDK Python unpinned | 113.8    | 1,373.5     | 3,134.1      |
 
 
 Pinning plus isolation reduced the observed p99.99 latency by roughly 5× for C++ and 9.6× for Python. These sequential, profiled runs exclude the first ten seconds and retain latency outliers.
 
-Both Holoscan versions call Pinocchio's C++-based solver, but Python adds interpreter execution, object allocation, and GIL coordination around both Pinocchio and the Holoscan runtime. Those costs matter for CPU control loops with microsecond latency budgets. C++ gives us more control over allocations and system calls in the critical path (although this example still allocates memory and is not a zero-syscall pipeline).
+Both HSDK versions call Pinocchio's C++-based solver, but Python adds interpreter execution, object allocation, and GIL coordination around both Pinocchio and the HSDK runtime. Those costs matter for CPU control loops with microsecond latency budgets. C++ gives us more control over allocations and system calls in the critical path (although this example still allocates memory and is not a zero-syscall pipeline).
 
 For GPU-based perception workloads taking milliseconds or tens of milliseconds—orders of magnitude longer—optimizing small allocations and incidental system calls on the CPU is usually less consequential. Python remains a practical way to compose these pipelines (provided that the pipeline elements are implemented in CUDA).
 
 ## Next Steps
 
-This tutorial illustrates how to use HSDK 5.0 to build low-latency control pipelines. Our three-operator example covers the basics; the [Cartesian point-hold example](docs/technical-guide.md#cartesian-point-hold) adds kinematics and impedance control as reusable Holoscan operators. It captures a goal position while maintaining compliance and leaving orientation free.
+This tutorial illustrates how to use HSDK 5.0 to build low-latency control pipelines. Our three-operator example covers the basics; the [Cartesian point-hold example](docs/technical-guide.md#cartesian-point-hold) adds kinematics and impedance control as reusable HSDK operators. It captures a goal position while maintaining compliance and leaving orientation free.
 
 Gravity compensation provides a foundation for hand-guided teaching, teleoperation, and manipulation. To extend the application with perception, explore the [Holoscan Modules tutorials](../holoscan-modules/README.md), which show how to use and package reusable operators.
 
