@@ -140,8 +140,8 @@ python3.12 -m venv .venv
 .venv/bin/pre-commit run --all-files --show-diff-on-failure
 ```
 
-Pre-commit installs its pinned hook dependencies and downloads the ShellCheck and
-Lychee binaries on the first run, which requires network access. Later commits
+Pre-commit installs its pinned hook dependencies on the first run, which requires
+network access to PyPI and to GitHub for the ShellCheck download. Later commits
 automatically check staged files.
 Whitespace and end-of-file hooks can fix files; review and stage those changes, then
 retry the commit. Markdown's two-space hard line breaks are preserved.
