@@ -46,49 +46,6 @@ authenticate users, listen as a product service, or ship a packaged runtime.
 
 The principal security boundaries are:
 
-- Host-tuning walkthroughs in `tutorials/high_performance_networking/` and
-  `tutorials/windows_vm/` document root commands that change NIC firmware
-  settings, kernel modules, hugepages, CPU isolation, and VFIO GPU binding, and
-  they start Holoscan networking containers with Docker `--privileged`.
-- `tutorials/cuda_mps/start_mps_daemon.sh` starts `nvidia-cuda-mps-control` and
-  points `CUDA_MPS_PIPE_DIRECTORY` and `CUDA_MPS_LOG_DIRECTORY` at `/tmp`.
-- Debugging samples disable container restrictions.
-  `tutorials/debugging/cli_debugging/debug_gdb.sh` and `debug_legacy.sh` pass
-  `--security-opt seccomp=unconfined`. The VS Code dev container in
-  `tutorials/debugging/holoscan_container_vscode/.devcontainer/devcontainer.json`
-  uses `--net=host`, `--cap-add=SYS_PTRACE`, and `seccomp=unconfined`, bind-mounts
-  the X11 socket and the host `XDG_RUNTIME_DIR`, and enables
-  Docker-outside-of-Docker. Its `Dockerfile` grants the `holoscan` user
-  passwordless sudo.
-- `tutorials/cloudxr_runtime_for_xr_applications/README.md` opens host firewall
-  ports and publishes CloudXR Runtime TCP `48010` and UDP `47998`–`48000`,
-  `48005`, `48008`, and `48012`. `tutorials/local-llama/chatbot.py` sends chat
-  text to `http://127.0.0.1:8081` with an empty `openai.api_key` and calls
-  `demo.launch()`.
-- `tutorials/creating-multi-node-applications/` splits Holoscan applications
-  across fragments and tells the reader to pass `--driver`, `--worker`, and
-  `--address <node IP>:<port>`. `scenario2/endoscopy_distributed_app.py` can
-  take an AJA or Yuan capture source with RDMA and records tensors under the
-  `/tmp` directory named in `endoscopy_distributed_app.yaml`.
-- `tutorials/dicom_to_usd_with_monai_and_holoscan/tutorial.py` loads a DICOM
-  study from the MONAI Deploy input path and writes a mesh and USD stage to the
-  output path. Its `Dockerfile` takes `ARG BASE_IMAGE`, installs unpinned
-  `requirements.txt` with pip, and downloads a sample bundle with `gdown` and
-  an aarch64 OpenUSD archive with `wget`, without checksums.
-- `tutorials/gpu_direct_storage_on_holoscan/holoscan_gds.py` reads and writes
-  GPUDirect Storage files through `kvikio.CuFile`. The default path is
-  `/mnt/nvme/data/test-file`; `config.yaml`, when present, is loaded with
-  `yaml.safe_load`.
-- `tutorials/pretrained_foundational_models/self_supervised_training/` loads
-  checkpoints with `torch.load` and builds from
-  `nvcr.io/nvidian/pytorch:22.02-py3`. `extract_frames.py` reads every `.mp4`
-  name under a caller-supplied video directory.
-- `tutorials/holoscan_response_time_analysis/artifact/` builds and launches
-  local experiment binaries with `os.system` and creates result files with mode
-  `0o666`.
-- `tutorials/holoscan-playground-on-aws/README.md` documents an EC2 instance
-  with a public IP and SSH key, then runs a Holoscan container with `--net host`,
-  `--ipc=host`, `--cap-add=CAP_SYS_PTRACE`, and `xhost +local:docker`.
 - GitHub Actions (`.github/workflows/ci.yml`) checks out the repo with
   `persist-credentials: false` and `contents: read`, installs the pinned
   `.github/requirements.txt`, and runs the hooks in `.pre-commit-config.yaml`
