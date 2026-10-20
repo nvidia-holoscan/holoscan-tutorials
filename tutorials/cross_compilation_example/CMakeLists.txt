@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 4.0)
 project(cross_compilation_example LANGUAGES CXX)
 
-find_package(holoscan 4.6 REQUIRED CONFIG)
+find_package(holoscan 5.0 REQUIRED CONFIG COMPONENTS core)
 
 add_executable(cross_compilation_example main.cpp)
 target_link_libraries(cross_compilation_example PRIVATE holoscan::core)
