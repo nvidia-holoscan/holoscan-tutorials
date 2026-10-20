@@ -1,0 +1,55 @@
+{
+  "$schema": "urn:holohub:tutorial:v1",
+  "tutorial": {
+    "name": "Make a Robot Arm Feel Weightless with Holoscan 5",
+    "description": "Use HSDK 5.0, part of the Holoscan 5 platform release, to build a low-latency gravity-compensation loop for a Seeed Studio reBot arm with Pinocchio in Python or C++, then measure latency and jitter with Nsight Systems",
+    "authors": [
+      {
+        "name": "Jay Carlson",
+        "affiliation": "NVIDIA"
+      }
+    ],
+    "language": [
+      "Python",
+      "C++"
+    ],
+    "version": "0.1.0",
+    "changelog": {
+      "0.1.0": "Initial release"
+    },
+    "holoscan_sdk": {
+      "minimum_required_version": "5.0.0",
+      "tested_versions": [
+        "5.0.0"
+      ]
+    },
+    "platforms": [
+      "x86_64",
+      "aarch64"
+    ],
+    "tags": [
+      "Robotics",
+      "Control",
+      "Gravity Compensation",
+      "Pinocchio",
+      "Nsight Systems",
+      "Jetson Thor",
+      "Jetson Orin Nano"
+    ],
+    "ranking": 2,
+    "requirements": {
+      "hardware": [
+        {
+          "name": "Seeed Studio reBot Arm B601-DM",
+          "description": "Six-joint arm and gripper with Damiao motors, power supply, and serial connection",
+          "required": true
+        },
+        {
+          "name": "Linux host with serial device access",
+          "description": "x86_64 Ubuntu 24.04 or Jetson Orin Nano / Jetson Thor with JetPack 7.2.1; read/write access to the arm's serial device",
+          "required": true
+        }
+      ]
+    }
+  }
+}

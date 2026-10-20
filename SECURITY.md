@@ -96,6 +96,16 @@ The principal security boundaries are:
    `nvidia-cuda-mps-control -d` with its pipe and log directories in `/tmp`.
    On a multi-user host, another local user who can reach that pipe can submit
    work to the MPS server running as the reader who started the daemon.
+7. **Robot actuation and externally fetched models:** The reBot gravity
+   compensation tutorial enables motors and sends torque commands through a
+   serial device. Incorrect configuration or model parameters can cause
+   unexpected motion; stopping or losing power removes active weight support.
+   Readers must secure the arm, keep clear of pinch points, and use the
+   power-off-safe home position for startup and normal shutdown. Firmware and
+   host command watchdogs do not detect stale feedback in motorbridge's cache.
+   `scripts/fetch-urdf.py` clones Seeed's repository temporarily, reads a pinned
+   URDF blob, and checks its SHA-256 before parsing and extracting the local
+   dynamics model. This checks integrity, not physical accuracy or licensing.
 
 ### Critical Security Assumptions
 
@@ -137,3 +147,9 @@ terms reviewed before they are pinned, installed into a published image, or
 shipped. Components distributed with a Holoscan product must follow the
 applicable NVIDIA Open Source Review Board process. There is no `NOTICE` file
 in this repository.
+
+The reBot tutorial does not redistribute Seeed's URDF because its license
+provenance is unconfirmed. Readers fetch it from upstream during setup; the
+generated `tutorials/rebot-gravity-compensation/urdf/DM/` directory is ignored
+by Git. Do not include that directory in source distributions, packages, or
+images without establishing the applicable license and redistribution rights.

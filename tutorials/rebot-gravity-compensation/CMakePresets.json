@@ -1,0 +1,19 @@
+{
+  "version": 5,
+  "cmakeMinimumRequired": {"major": 4, "minor": 0, "patch": 0},
+  "configurePresets": [{
+    "name": "default",
+    "displayName": "HSDK 5.0 gravity compensation",
+    "generator": "Ninja",
+    "binaryDir": "${sourceDir}/build",
+    "cacheVariables": {
+      "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+      "BUILD_TESTING": "ON"
+    }
+  }],
+  "buildPresets": [{"name": "default", "configurePreset": "default", "jobs": 2}],
+  "testPresets": [{
+    "name": "default", "configurePreset": "default",
+    "output": {"outputOnFailure": true}
+  }]
+}

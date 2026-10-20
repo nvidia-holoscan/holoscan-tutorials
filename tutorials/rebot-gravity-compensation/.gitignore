@@ -1,0 +1,8 @@
+/build*/
+/install/
+/.venv/
+/.vscode/
+/compile_commands.json
+/artifacts/
+/urdf/DM/
+__pycache__/

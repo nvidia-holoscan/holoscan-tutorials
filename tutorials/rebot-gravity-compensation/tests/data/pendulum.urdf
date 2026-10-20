@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<robot name="analytic_pendulum">
+  <link name="base" />
+  <link name="arm">
+    <inertial>
+      <origin xyz="1 0 0" />
+      <mass value="2" />
+      <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.25" iyz="0" izz="0.25" />
+    </inertial>
+  </link>
+  <joint name="hinge" type="revolute">
+    <parent link="base" />
+    <child link="arm" />
+    <axis xyz="0 1 0" />
+    <limit lower="-3.14" upper="3.14" effort="40" velocity="5" />
+  </joint>
+  <link name="tip" />
+  <joint name="tip_fixed" type="fixed">
+    <parent link="arm" />
+    <child link="tip" />
+    <origin xyz="2 0 0" />
+  </joint>
+</robot>
