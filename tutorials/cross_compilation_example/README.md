@@ -72,8 +72,7 @@ This tutorial covers two workflows:
 
 - An x86_64 Linux host with Docker Engine and BuildKit.
 - Internet access while building the image.
-- Availability of `holoscan-core-cuda-13:arm64=5.0.0.8.0-1` in NVIDIA's SBSA
-  Debian repository when the image is built.
+- `holoscan-core-cuda-13:arm64` available from APT when the image is built.
 - `file` and `readelf` (`binutils`) on the host for the final artifact checks.
 - For the CLI workflow: Python 3.11 or newer and `holoscan-cli==5.0.0` installed
   in a Python environment, such as a virtual environment.
@@ -103,8 +102,6 @@ holoscan install cross_compilation_example --base-img ubuntu:24.04
 # Inspect the existing build without rebuilding the image or application
 holoscan run cross_compilation_example \
   --base-img ubuntu:24.04 --no-docker-build --no-local-build
-
-CROSS_COMPILED_APP=build/cross_compilation_example/install/bin/cross_compilation_example
 ```
 
 To build without staging an install, run
@@ -112,8 +109,14 @@ To build without staging an install, run
 `holoscan install`.
 
 `holoscan run` checks that the generated executable is AArch64; it does not
-execute that binary on the x86_64 build host. Continue with
-[Verify the result](#verify-the-result) and, if target hardware is available,
+execute that binary on the x86_64 build host. Set `CROSS_COMPILED_APP` to the
+staged CLI executable for the inspection and deployment commands below:
+
+```bash
+CROSS_COMPILED_APP=build/cross_compilation_example/install/bin/cross_compilation_example
+```
+
+Continue with [Verify the result](#verify-the-result) and, if target hardware is available,
 [Deploy and validate on a Thor target](#deploy-and-validate-on-a-thor-target).
 
 ### Manual Docker and CMake workflow
