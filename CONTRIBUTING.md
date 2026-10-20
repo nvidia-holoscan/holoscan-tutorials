@@ -26,8 +26,9 @@ implementation here.
 
 ## Anatomy of a tutorial
 
-Each tutorial lives under `tutorials/` and owns its setup and execution instructions;
-there is no repository-wide build:
+Each tutorial lives under `tutorials/` and owns its setup and execution instructions.
+The repository has a small CMake entry point for tutorials that support the
+Holoscan CLI; it does not build every tutorial:
 
 ```text
 tutorials/<topic>/
@@ -38,6 +39,13 @@ tutorials/<topic>/
 
 Related tutorials may share a parent directory and introductory README. Each individual
 walkthrough still needs its own README and metadata.
+
+For a CMake tutorial that supports `holoscan build`, `holoscan run`, or
+`holoscan install`, add `add_holohub_application(<directory-name>)` to
+`tutorials/CMakeLists.txt`. The directory must contain its own `CMakeLists.txt`
+and have a CLI run configuration in metadata if it supports `holoscan run`.
+The CLI selects it with `APP_<directory-name>=ON`. An unregistered tutorial
+cannot be built through the repository CMake entry point.
 
 ### `README.md`
 

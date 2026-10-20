@@ -32,6 +32,15 @@ cd holoscan-tutorials
 3. Follow the walkthrough from the working directories it specifies. Setup and
    execution are specific to each tutorial.
 
+## Holoscan CLI
+
+The [Holoscan CLI](https://github.com/nvidia-holoscan/holoscan-cli) can discover
+tutorials from the repository root with `holoscan list`. Tutorials that register
+a CMake application in `tutorials/CMakeLists.txt` can also use CLI build, run,
+and install commands. Other tutorials provide their own workflows in their
+READMEs. See the [cross-compilation example](tutorials/cross_compilation_example/README.md)
+for a CLI build and install from this repository.
+
 ## Next steps and contributions
 
 Explore [Holoscan Applications](https://github.com/nvidia-holoscan/holoscan-applications)
