@@ -204,16 +204,20 @@ scp "${CROSS_COMPILED_APP}" \
 Run the remaining checks on the target:
 
 ```bash
-set -o pipefail
 chmod +x /tmp/cross_compilation_example
 
 # Validate that all shared libraries resolve on the target
-ldd /tmp/cross_compilation_example | tee /tmp/cross_compilation_example.ldd
-! grep -q 'not found' /tmp/cross_compilation_example.ldd
+(
+  set -o pipefail
+  ldd /tmp/cross_compilation_example | tee /tmp/cross_compilation_example.ldd
+) && test -r /tmp/cross_compilation_example.ldd \
+  && ! grep -q 'not found' /tmp/cross_compilation_example.ldd
 
 # Validate successful exit and exactly one hello-world activation
-timeout 30s /tmp/cross_compilation_example 2>&1 | tee /tmp/cross_compilation_example.log
-test "$(grep -Fc 'Hello Holoscan!' /tmp/cross_compilation_example.log)" -eq 1
+(
+  set -o pipefail
+  timeout 30s /tmp/cross_compilation_example 2>&1 | tee /tmp/cross_compilation_example.log
+) && test "$(grep -Fc 'Hello Holoscan!' /tmp/cross_compilation_example.log)" -eq 1
 ```
 
 The host-side `file` and `readelf` checks validate the cross-build and linkage. This target-side run
@@ -225,6 +229,15 @@ other shared libraries.
 
 This section starts with a plain Ubuntu 24.04 x86_64 build environment and keeps the target SDK
 under the existing project's `.cross/` directory. The build machine does not need an NVIDIA GPU.
+
+Before running the commands in this section, change to the existing project's root directory:
+
+```bash
+cd /path/to/your/existing-project
+```
+
+Run the remaining commands from this directory so `$PWD`, `.cross/`, `cmake/`, and `build-cross/`
+refer to the existing project.
 
 ### Install the build tools
 
@@ -321,6 +334,7 @@ not register arm64 as a foreign architecture for the build machine:
 sudo apt-get update \
   -o Dir::Etc::sourcelist=sources.list.d/nvidia-holoscan-sbsa.list \
   -o Dir::Etc::sourceparts=- \
+  -o APT::Get::List-Cleanup=0 \
   -o APT::Architecture=arm64 \
   -o APT::Architectures=arm64
 
@@ -347,7 +361,8 @@ sudo dpkg --add-architecture arm64
 # Update the target repository metadata
 sudo apt-get update \
   -o Dir::Etc::sourcelist=sources.list.d/nvidia-holoscan-sbsa.list \
-  -o Dir::Etc::sourceparts=-
+  -o Dir::Etc::sourceparts=- \
+  -o APT::Get::List-Cleanup=0
 
 # Download the package
 (
@@ -383,19 +398,21 @@ printf '%s  %s\n' "${HOLOSCAN_DEB_SHA256}" "${HOLOSCAN_DEB}" | sha256sum --check
 After completing one SDK download option, validate and extract the package:
 
 ```bash
-# Validate the package
-test -f "${HOLOSCAN_DEB}"
-test "$(dpkg-deb -f "${HOLOSCAN_DEB}" Architecture)" = arm64
-test "$(dpkg-deb -f "${HOLOSCAN_DEB}" Version)" = "${HOLOSCAN_DEB_VERSION}"
-
-# Extract to disk
-dpkg-deb --extract "${HOLOSCAN_DEB}" .cross/holoscan-root
-
-# Validate the extraction succeeded
 HOLOSCAN_TARGET_SDK_ROOT="$PWD/.cross/holoscan-root/usr"
-test -f "${HOLOSCAN_TARGET_SDK_ROOT}/include/holoscan/holoscan.hpp"
-test -f "${HOLOSCAN_TARGET_SDK_ROOT}/lib/aarch64-linux-gnu/cmake/holoscan/holoscan-config.cmake"
-file -L "${HOLOSCAN_TARGET_SDK_ROOT}/lib/aarch64-linux-gnu/libholoscan_core.so"
+(
+  set -e
+  # Validate the package before extracting it.
+  test -f "${HOLOSCAN_DEB}"
+  test "$(dpkg-deb -f "${HOLOSCAN_DEB}" Architecture)" = arm64
+  test "$(dpkg-deb -f "${HOLOSCAN_DEB}" Version)" = "${HOLOSCAN_DEB_VERSION}"
+
+  dpkg-deb --extract "${HOLOSCAN_DEB}" .cross/holoscan-root
+
+  test -f "${HOLOSCAN_TARGET_SDK_ROOT}/include/holoscan/holoscan.hpp"
+  test -f "${HOLOSCAN_TARGET_SDK_ROOT}/lib/aarch64-linux-gnu/cmake/holoscan/holoscan-config.cmake"
+  file -L "${HOLOSCAN_TARGET_SDK_ROOT}/lib/aarch64-linux-gnu/libholoscan_core.so" \
+    | grep -E 'ELF .*ARM aarch64'
+)
 ```
 
 The final command must report an ARM AArch64 library. The apt options verify the repository
@@ -481,11 +498,20 @@ target_link_libraries(my_holoscan_app PRIVATE holoscan::core)
 install(TARGETS my_holoscan_app RUNTIME DESTINATION bin)
 ```
 
-If the project contains `.cu` files, enable CUDA and pass the target architecture while configuring:
+If the project contains `.cu` files, enable CUDA in `project()`:
 
 ```cmake
 project(my_holoscan_app LANGUAGES CXX CUDA)
 ```
+
+After `add_executable()`, explicitly require C++20 for both C++ and CUDA sources so NVCC can compile
+the SDK 5 headers:
+
+```cmake
+target_compile_features(my_holoscan_app PRIVATE cxx_std_20 cuda_std_20)
+```
+
+Pass the target architecture while configuring:
 
 ```bash
 cmake ... -DCMAKE_CUDA_ARCHITECTURES="75-virtual"
@@ -530,26 +556,44 @@ Holoscan SDK 5 splits Core, Inference, Vision, and Visualization into separate p
 extracts only `holoscan-core-cuda-13`; the `holoscan` package is a metapackage that pulls in all
 components when installed with apt.
 
-Applications using additional components must download and extract their actual AArch64 runtime
-and development packages, plus their dependencies, into a separate target root. The
-`holoscan-inference-cuda-13`, `holoscan-vision-cuda-13`, and `holoscan-visualization-cuda-13`
-packages can themselves be metapackages: extracting only those small files does not provide the
-component headers or libraries. Resolve their dependency closure from the matching target
-repositories. Keep the SDK Core extraction in `.cross/holoscan-root`.
+Applications using additional components must download their actual AArch64 runtime and
+development packages, plus their dependencies. Extract Holoscan component packages into the same
+`.cross/holoscan-root` as Core so their CMake exports share one SDK prefix. Extract external
+dependencies, such as TensorRT, into `.cross/target-root`.
+
+In the pinned `5.0.0.8.0-1` Debian package set, these CUDA 13 component packages are metapackages.
+Their `Depends` fields identify the development packages containing the component payloads:
+
+| Metapackage | Development package |
+| --- | --- |
+| `holoscan-inference-cuda-13` | `libholoscan-inference-dev-cuda-13` |
+| `holoscan-vision-cuda-13` | `libholoscan-vision5-dev-cuda-13` |
+| `holoscan-visualization-cuda-13` | `libholoscan-visualization-dev-cuda-13` |
+
+Extracting only a metapackage does not provide component headers or libraries. Download its
+referenced development package and matching runtime dependencies, and extract all Holoscan
+payload packages into `.cross/holoscan-root` alongside Core.
 
 Install native x86_64 NVCC and NVIDIA's Cross-SBSA packages normally. Keep architecture-specific
 optional dependencies out of the builder's package database unless their multiarch compatibility
 has been verified. The architecture-independent `libexpected-dev` package used above contains
 headers and CMake files and can be extracted alongside Core.
 
-The safe default workflow for additional AArch64 packages is:
+The workflow below is for third-party AArch64 dependencies only. Do not add `holoscan`,
+`holoscan-*`, or `libholoscan*` packages to `TARGET_PACKAGES`. Their dependency closure can pull
+Core and AArch64 CUDA compiler packages into the external root. Download the required SDK payload
+packages separately and extract them into `.cross/holoscan-root`, retaining the verified Core.
+
+The safe default workflow for these external packages is:
 
 1. Declare the required AArch64 packages and exact versions in a project-owned manifest.
 2. Give apt isolated package status, repository metadata, and package-cache directories for arm64.
 3. Use `apt-get --download-only` so apt resolves and downloads the dependency closure without
    installing it. This command does not populate the target package root.
-4. Extract every downloaded Debian package into one target package root with `dpkg-deb --extract`.
-5. Add that root to `CMAKE_FIND_ROOT_PATH`, then provide any package-specific CMake configuration.
+4. Reject Holoscan packages in the download cache, then extract the external packages with
+   `dpkg-deb --extract`.
+5. Append that root to `CMAKE_FIND_ROOT_PATH` after the SDK, GNU AArch64, and CUDA roots, then
+   provide any package-specific CMake configuration.
 6. Check every linked library's architecture and validate the result on the target system.
 
 The isolated apt directories prevent the target dependency resolver from using the builder's amd64
@@ -586,30 +630,77 @@ APT_TARGET_OPTIONS=(
 )
 ```
 
-Define `TARGET_PACKAGES` with the required AArch64 component packages and exact versions before
+Define `TARGET_PACKAGES` with the required external AArch64 packages and exact versions before
 running the resolver. Review the simulated package transaction before downloading.
 Packages that rely on maintainer scripts, alternatives, or triggers to construct their installed
 layout might not work through extraction alone. For those packages, reproduce the required links
 explicitly or use a sysroot captured from the exact target root filesystem.
 
-For example, after defining `TARGET_PACKAGES`:
+#### Add TensorRT development files (optional)
+
+TensorRT is not needed by this hello-world example. Applications using the Holoscan Inference
+component need its matching AArch64 runtime and development packages, including TensorRT headers
+and link libraries; extracting the Core package alone does not supply them.
+
+In the pinned package set, the `holoscan-inference-cuda-13` metapackage depends on
+`libholoscan-inference-dev-cuda-13`. Download and inspect that development package and its matching
+Holoscan runtime dependencies, then extract those SDK packages into `.cross/holoscan-root`.
+Keep them out of the external dependency manifest below: resolving their complete apt dependency
+closure can pull in an AArch64 CUDA compiler, while this builder uses native NVCC and Cross-SBSA.
+
+Choose a TensorRT release compatible with the selected SDK 5 package, CUDA version, and target OS.
+Use the SDK's package metadata and NVIDIA's
+[TensorRT Debian installation guide](https://docs.nvidia.com/deeplearning/tensorrt/latest/installing-tensorrt/install-debian.html)
+to identify the required development and runtime packages. For a project that needs TensorRT's inference
+library, plugins, and ONNX model parser, start the external dependency manifest with:
 
 ```bash
-# Review the dependency closure without changing the builder
-apt-get "${APT_TARGET_OPTIONS[@]}" update
-apt-get "${APT_TARGET_OPTIONS[@]}" \
-  --simulate --no-install-recommends install \
-  "${TARGET_PACKAGES[@]}"
+# Set this to the exact Debian version required by the selected SDK and target.
+: "${TENSORRT_DEB_VERSION:?Set the matching TensorRT Debian package version}"
 
-# Download the reviewed dependency closure
-apt-get "${APT_TARGET_OPTIONS[@]}" \
-  --download-only --no-install-recommends --yes install \
-  "${TARGET_PACKAGES[@]}"
+TARGET_PACKAGES=(
+  "libnvinfer-dev:arm64=${TENSORRT_DEB_VERSION}"
+  "libnvinfer-headers-dev:arm64=${TENSORRT_DEB_VERSION}"
+  "libnvinfer-plugin-dev:arm64=${TENSORRT_DEB_VERSION}"
+  "libnvinfer-headers-plugin-dev:arm64=${TENSORRT_DEB_VERSION}"
+  "libnvonnxparsers-dev:arm64=${TENSORRT_DEB_VERSION}"
+)
+```
 
-# Extract the packages without running AArch64 maintainer scripts
-while IFS= read -r -d '' package; do
-  dpkg-deb --extract "${package}" "${TARGET_PACKAGE_ROOT}"
-done < <(find "${TARGET_APT_ROOT}/archives" -maxdepth 1 -name '*.deb' -print0)
+Review the simulated transaction below and add exact pins for the matching runtime packages to
+the manifest before downloading. Runtime package names depend on the TensorRT major version.
+Use the same TensorRT release on the target, where apt should install its runtime dependencies
+normally. On the builder, download and extract these packages rather than installing them beside
+any x86_64 TensorRT installation.
+
+```bash
+(
+  set -e
+  : "${TARGET_PACKAGES[0]:?Define a version-pinned third-party TARGET_PACKAGES manifest}"
+
+  # Review the dependency closure without changing the builder
+  apt-get "${APT_TARGET_OPTIONS[@]}" update
+  apt-get "${APT_TARGET_OPTIONS[@]}" \
+    --simulate --no-install-recommends install \
+    "${TARGET_PACKAGES[@]}"
+
+  # Download the reviewed dependency closure
+  apt-get "${APT_TARGET_OPTIONS[@]}" \
+    --download-only --no-install-recommends --yes install \
+    "${TARGET_PACKAGES[@]}"
+
+  # Extract the packages without running AArch64 maintainer scripts
+  for package in "${TARGET_APT_ROOT}/archives/"*.deb; do
+    package_name=$(dpkg-deb -f "${package}" Package)
+    case "${package_name}" in
+      holoscan*|libholoscan*)
+        echo "Keep ${package_name} out of the external dependency root." >&2
+        exit 1
+        ;;
+    esac
+    dpkg-deb --extract "${package}" "${TARGET_PACKAGE_ROOT}"
+  done
+)
 ```
 
 Request each additional component explicitly in CMake. For example, an inference application uses:
@@ -619,9 +710,9 @@ find_package(holoscan 5.0 REQUIRED CONFIG COMPONENTS core inference)
 target_link_libraries(my_holoscan_app PRIVATE holoscan::core holoscan::op_inference)
 ```
 
-This example does not validate optional components or their backend dependencies. Use the SDK 5
-component documentation and package metadata to choose the matching development packages and
-runtime versions; SDK 4 inference backend targets and package lists should not be reused unchanged.
+This optional discussion covers TensorRT setup only. The hello-world build does not validate the
+Inference component or TensorRT; validate an application that actually uses them. Use the inference
+targets and CMake package discovery provided by the matching SDK 5 release.
 
 #### Add the package root to CMake and validate it
 
@@ -635,7 +726,7 @@ list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES
   HOLOSCAN_TARGET_PACKAGE_ROOT)
 
 if(HOLOSCAN_TARGET_PACKAGE_ROOT)
-  list(PREPEND CMAKE_FIND_ROOT_PATH "${HOLOSCAN_TARGET_PACKAGE_ROOT}")
+  list(APPEND CMAKE_FIND_ROOT_PATH "${HOLOSCAN_TARGET_PACKAGE_ROOT}")
 endif()
 ```
 
@@ -651,17 +742,34 @@ validate these dependencies. Check representative inputs and the completed execu
 using host `ldd`:
 
 ```bash
-# Check each optional library actually used by the application.
-file build-cross/install/bin/my_holoscan_app
-readelf --dynamic build-cross/install/bin/my_holoscan_app \
-  | grep libholoscan
+(
+  set -e
+  set -o pipefail
+  test -d .cross/target-root
 
-if find .cross/target-root -type f \
-    \( -name '*.so' -o -name '*.so.*' \) -print0 \
-    | xargs -0 file | grep -q 'ELF .*x86-64'; then
-  echo 'Found an x86_64 library in an AArch64 target root.' >&2
-  exit 1
-fi
+  # Check the extracted TensorRT library when using the optional setup above.
+  file -L .cross/target-root/usr/lib/aarch64-linux-gnu/libnvinfer.so \
+    | grep -E 'ELF .*ARM aarch64'
+  file -L .cross/holoscan-root/usr/lib/aarch64-linux-gnu/libholoscan_infer.so \
+    | grep -E 'ELF .*ARM aarch64'
+  file -L .cross/holoscan-root/usr/lib/aarch64-linux-gnu/libholoscan_op_inference.so \
+    | grep -E 'ELF .*ARM aarch64'
+  file build-cross/install/bin/my_holoscan_app | grep -E 'ELF .*ARM aarch64'
+
+  # The app links the operator; the operator links the inference library.
+  readelf --dynamic build-cross/install/bin/my_holoscan_app \
+    | grep -F '[libholoscan_op_inference.so.5]'
+  readelf --dynamic .cross/holoscan-root/usr/lib/aarch64-linux-gnu/libholoscan_op_inference.so \
+    | grep -F '[libholoscan_infer.so.5]'
+
+  libraries=$(find .cross/target-root -type f \
+      \( -name '*.so' -o -name '*.so.*' \) -print0 \
+      | xargs -0 -r file)
+  if grep -q 'ELF .*x86-64' <<< "${libraries}"; then
+    echo 'Found an x86_64 library in an AArch64 target root.' >&2
+    exit 1
+  fi
+)
 ```
 
 Run the resulting application on the supported Thor target to validate the target driver, ABI,

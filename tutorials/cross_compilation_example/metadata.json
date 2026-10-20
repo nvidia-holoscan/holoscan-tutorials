@@ -1,4 +1,5 @@
 {
+  "$schema": "urn:holohub:tutorial:v1",
   "tutorial": {
     "name": "Cross Compilation Example",
     "description": "Cross-compile a minimal Holoscan C++ application for Jetson AGX Thor and IGX Thor",
@@ -9,9 +10,9 @@
       }
     ],
     "language": "C++",
-    "version": "1.0",
+    "version": "2.0",
     "changelog": {
-      "1.0": "Initial release"
+      "2.0": "Initial update for Holoscan SDK 5.0"
     },
     "holoscan_sdk": {
       "minimum_required_version": "5.0.0",
@@ -47,7 +48,7 @@
           ]
         },
         "run": {
-          "command": "file <build_dir>/tutorials/cross_compilation_example/cross_compilation_example",
+          "command": "bash -o pipefail -c 'file \"$1\" | grep -E \"ELF .*ARM aarch64\"' -- \"<holohub_app_bin>/cross_compilation_example\"",
           "workdir": "",
           "docker_run_args": [
             "--runtime",

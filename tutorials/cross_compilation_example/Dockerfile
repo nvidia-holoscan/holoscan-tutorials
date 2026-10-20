@@ -35,16 +35,12 @@ RUN test "$(dpkg --print-architecture)" = amd64 \
   && apt-get update \
   && apt-get install --yes --no-install-recommends \
   ca-certificates=20260601~24.04.1 \
-  curl \
+  curl=8.5.0-2ubuntu10.16 \
   file=1:5.45-3build1 \
   g++-aarch64-linux-gnu=4:13.2.0-7ubuntu1 \
   gnupg=2.4.4-2ubuntu17.6 \
   ninja-build=1.11.1-2 \
   python3-pip=24.0+dfsg-1ubuntu1.3 \
-  && cd /tmp \
-  && apt-get download libexpected-dev=1.1.0-2 \
-  && dpkg-deb --extract libexpected-dev_1.1.0-2_all.deb /opt/holoscan-target \
-  && rm -f libexpected-dev_1.1.0-2_all.deb \
   && rm -rf /var/lib/apt/lists/*
 
 ARG CMAKE_VERSION=4.0.3
@@ -72,7 +68,7 @@ RUN curl -fsSL \
   https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/sbsa \
   > /etc/apt/sources.list.d/nvidia-holoscan-sbsa.list
 
-# Install native NVCC and the AArch64 CUDA cross-compilation packages.
+# Install native NVCC, AArch64 CUDA packages, and the target SDK's header dependency.
 FROM cuda-repositories AS cuda-cross
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -81,6 +77,10 @@ RUN apt-get update \
   && apt-get install --yes --no-install-recommends \
   cuda-cross-sbsa-13-0=13.0.3-1 \
   cuda-nvcc-13-0=13.0.88-1 \
+  && cd /tmp \
+  && apt-get download libexpected-dev=1.1.0-2 \
+  && dpkg-deb --extract libexpected-dev_1.1.0-2_all.deb /opt/holoscan-target \
+  && rm -f libexpected-dev_1.1.0-2_all.deb \
   && rm -rf /var/lib/apt/lists/*
 
 # Download, validate, and extract only the AArch64 Holoscan SDK package needed by this example.
