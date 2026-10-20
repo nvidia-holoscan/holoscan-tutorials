@@ -18,16 +18,16 @@ Browse published modules in the [Modules tab](https://nvidia-holoscan.github.io/
 
 - Holoscan SDK 5.0.0 or later with CUDA 13
 - CMake 4.0 or later and a C++20-capable compiler
-- Python 3.12 through 3.14 for the exact `holoscan-cli==5.0.0rc3` preview commands used by this walkthrough
+- Python 3.12 through 3.14 for the `holoscan-cli==5.0.0` commands used by this walkthrough
 - Docker, Docker Buildx, and NVIDIA Container Toolkit for the recommended container workflow
 
 SDK 5.0 Module operators are implemented in C++. The scaffold can add Python bindings so Python
 applications can use them, but it does not generate Python-implemented operators or wheel packages.
 The packaged artifact is a Debian package.
 
-The examples use the CLI preview `5.0.0rc3` from NVIDIA's Python index because that is the
-version pinned by the current SDK 5 template. CLI and SDK versions are independent: the scaffold
-uses CLI `5.0.0rc3` while requiring SDK `5.0.0` or later. See the
+The examples use `holoscan-cli==5.0.0` from PyPI, the version pinned by the current SDK 5
+template. CLI and SDK versions are independent: the scaffold uses CLI `5.0.0` while requiring
+SDK `5.0.0` or later. See the
 [Holoscan CLI documentation](https://github.com/nvidia-holoscan/holoscan-cli)
 for configuration and integration details.
 

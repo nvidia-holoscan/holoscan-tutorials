@@ -79,9 +79,6 @@ The principal security boundaries are:
   GPUDirect Storage files through `kvikio.CuFile`. The default path is
   `/mnt/nvme/data/test-file`; `config.yaml`, when present, is loaded with
   `yaml.safe_load`.
-- `tutorials/holohub_operators_external_applications/holohubCLI_wrapper` installs
-  `holoscan-cli` by expanding `HOLOSCAN_CLI_INSTALL_ARGS` unquoted into
-  `pip install`, defaulting to a pre-release from `https://pypi.nvidia.com`.
 - `tutorials/pretrained_foundational_models/self_supervised_training/` loads
   checkpoints with `torch.load` and builds from
   `nvcr.io/nvidian/pytorch:22.02-py3`. `extract_frames.py` reads every `.mp4`

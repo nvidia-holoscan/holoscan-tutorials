@@ -104,7 +104,7 @@ Start in the directory that will contain the new repository. Pass the friendly, 
 **Quick Start**: Run the following in a standard Python environment for an interactive setup:
 
 ```bash
-pip install 'holoscan-cli[create]>=5.0.0'
+pip install 'holoscan-cli[create]==5.0.0'
 holoscan create my-module    # simplified command for interactive setup
 ```
 
@@ -114,16 +114,14 @@ write anything to disk, let's preview exactly what the CLI plans to create.
 With `uv`:
 
 ```bash
-uvx --python 3.12 --index https://pypi.nvidia.com \
-  --from 'holoscan-cli[create]==5.0.0rc3' \
+uvx --python 3.12 --from 'holoscan-cli[create]==5.0.0' \
   holoscan create my-module \
   --language cpp \
   --interactive false \
   --context holoscan_version=5.0.0 \
   --dryrun
 
-uvx --python 3.12 --index https://pypi.nvidia.com \
-  --from 'holoscan-cli[create]==5.0.0rc3' \
+uvx --python 3.12 --from 'holoscan-cli[create]==5.0.0' \
   holoscan create my-module \
   --language cpp \
   --interactive false \
@@ -172,18 +170,16 @@ uv run holoscan version --json
 uv run holoscan list --json
 ```
 
-The generated project sends only the CLI development dependency to NVIDIA's Python index and
-leaves other packages on PyPI. `pyproject.toml` has `package = false`: uv is provisioning the
-development environment, not building a Python version of your Module.
+The generated project installs its development dependencies from PyPI. `pyproject.toml` has
+`package = false`: uv is provisioning the development environment, not building a Python version
+of your Module.
 
 If `uv` is not available, create the same isolated environment with `pip`:
 
 ```bash
 python3.12 -m venv .venv
 source .venv/bin/activate
-python -m pip install \
-  --extra-index-url https://pypi.nvidia.com \
-  -r requirements-cli.txt
+python -m pip install -r requirements-cli.txt
 holoscan version --json
 holoscan list --json
 ```
