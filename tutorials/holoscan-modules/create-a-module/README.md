@@ -62,7 +62,7 @@ recommended because it keeps the SDK, CUDA, compiler, and system dependencies to
 
 Install:
 
-- Python 3.12 through 3.14 for the exact `holoscan-cli==5.0.0rc1` commands in this tutorial
+- Python 3.12 through 3.14 for the exact `holoscan-cli==5.0.0` commands in this tutorial
 - [uv](https://docs.astral.sh/uv/getting-started/installation/), or a Python virtual environment
 - Docker with the Buildx plugin
 - NVIDIA Container Toolkit 1.12.2 or later
@@ -97,16 +97,16 @@ Start in the directory that will contain the new repository. Pass the friendly, 
 write anything to disk, let's preview exactly what the CLI plans to create:
 
 ```bash
-uvx --python 3.12 --index https://pypi.nvidia.com \
-  --from 'holoscan-cli[create]==5.0.0rc1' \
+uvx --python 3.12 \
+  --from 'holoscan-cli[create]==5.0.0' \
   holoscan create my-module \
   --language cpp \
   --interactive false \
   --context holoscan_version=5.0.0 \
   --dryrun
 
-uvx --python 3.12 --index https://pypi.nvidia.com \
-  --from 'holoscan-cli[create]==5.0.0rc1' \
+uvx --python 3.12 \
+  --from 'holoscan-cli[create]==5.0.0' \
   holoscan create my-module \
   --language cpp \
   --interactive false \
@@ -151,8 +151,8 @@ uv run holoscan version --json
 uv run holoscan list --json
 ```
 
-The generated project sends only the CLI development dependency to NVIDIA's Python index and
-leaves other packages on PyPI. `pyproject.toml` has `package = false`: uv is provisioning the
+The generated project installs its CLI development dependency and other packages from PyPI.
+`pyproject.toml` has `package = false`: uv is provisioning the
 development environment, not building a Python version of your Module.
 
 If uv is not available, create the same isolated environment with pip:
@@ -161,7 +161,6 @@ If uv is not available, create the same isolated environment with pip:
 python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install \
-  --extra-index-url https://pypi.nvidia.com \
   -r requirements-cli.txt
 holoscan version --json
 holoscan list --json
@@ -496,8 +495,11 @@ share it:
    installation.
 
 The repository may be public or private—the scaffold does not require a particular hosting model.
-If you want the wider Holoscan community to discover a public Module, coordinate with HoloHub
-maintainers about the appropriate catalog or pointer entry after the release artifacts are ready.
+If you want the wider Holoscan community to discover a public Module, register its source in the
+[HoloHub module registry](https://github.com/nvidia-holoscan/holohub/tree/main/modules) after the
+release artifacts are ready; a
+[registration request](https://github.com/nvidia-holoscan/holohub/issues/new?template=registry.yml&kind=module)
+opens the pull request for you.
 
 ## 5. Reference Card
 
@@ -571,7 +573,7 @@ experimentation, but they are mutable and cannot reproduce a specific source tre
 - [Holoscan CLI documentation](https://github.com/nvidia-holoscan/holoscan-cli)
 - Refer to the [Holoscan SDK User Guide](https://docs.nvidia.com/holoscan/sdk-user-guide/introduction/overview)
   for the broader SDK programming model.
-- Read the [HoloHub contributing guide](https://github.com/nvidia-holoscan/holohub/blob/main/CONTRIBUTING.md)
+- Read the [HoloHub registry contributing guide](https://github.com/nvidia-holoscan/holohub/blob/main/CONTRIBUTING.md)
   before proposing a catalog entry for your published Module.
 
 You now have the complete producer workflow: scaffold, implement, compile, test, package, inspect,

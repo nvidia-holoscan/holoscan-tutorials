@@ -56,7 +56,7 @@ build glue.
    and release. You consume a pinned commit (source build) or a pinned package
    version (binary install) and get bug fixes and SDK-compatibility updates for free.
 2. **Discoverable.** Curated Holoscan Modules may be listed alongside SDK-supported
-   and community work on the NVIDIA HoloHub website. Prospective users and their AI
+   and community work in the NVIDIA HoloHub registry. Prospective users and their AI
    agents find your dependency choices by searching the Holoscan ecosystem instead of
    guessing repo names. A vendored copy puts the entire burden of discovery on you.
 3. **Drop-in.** The Holoscan CLI reads Module metadata and prepares source declarations
@@ -80,8 +80,8 @@ each path's section below calls out anything extra it needs.
 - [Python >=3.12](https://www.python.org/downloads/) for this CLI 5.x walkthrough.
   Binary consumers follow the Python requirements of their SDK and module wheels.
 - For Path A, install the [Holoscan CLI](https://github.com/nvidia-holoscan/holoscan-cli)
-  in the consuming project's development environment. The examples use `holoscan-cli==5.0.0rc1`
-  from NVIDIA's Python index, as in the
+  in the consuming project's development environment. The examples use `holoscan-cli==5.0.0`
+  from PyPI, as in the
   [Create a Module tutorial](../create-a-module/README.md#32-set-up-the-generated-development-environment).
 
 ### Container Approach (Recommended for the CLI Workflow)
@@ -263,7 +263,7 @@ holoscan env-check --json
 ```
 
 The list is a local project inventory; use the
-[HoloHub Modules catalog](https://nvidia-holoscan.github.io/holohub/modules/) to discover
+[HoloHub module registry](https://github.com/nvidia-holoscan/holohub/tree/main/modules) to discover
 published projects. JSON output includes `schema_version: 1`. `env-check` can
 exit nonzero when dependencies are missing.
 
@@ -404,7 +404,7 @@ and best practices. A binary install (Paths B and C) is usually a simpler choice
 | Use CLI-declared sources (Path A) | Include the generated manifest and call `FetchContent_MakeAvailable(...)` in the consuming CMake project |
 | Embed via source — fully external (Path D) | `FetchContent_Declare(...)` + `FetchContent_MakeAvailable(...)` |
 | Inspect a standalone Module | `holoscan --project-root /path/to/module list --json` |
-| Discover published Holoscan Modules | [HoloHub Modules catalog](https://nvidia-holoscan.github.io/holohub/modules/) |
+| Discover published Holoscan Modules | [HoloHub module registry](https://github.com/nvidia-holoscan/holohub/tree/main/modules) |
 
 ## 9. Troubleshooting
 
