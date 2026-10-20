@@ -35,7 +35,7 @@ RUN test "$(dpkg --print-architecture)" = amd64 \
   && apt-get update \
   && apt-get install --yes --no-install-recommends \
   ca-certificates=20260601~24.04.1 \
-  curl=8.5.0-2ubuntu10.16 \
+  curl=8.5.0-* \
   file=1:5.45-3build1 \
   g++-aarch64-linux-gnu=4:13.2.0-7ubuntu1 \
   gnupg=2.4.4-2ubuntu17.6 \

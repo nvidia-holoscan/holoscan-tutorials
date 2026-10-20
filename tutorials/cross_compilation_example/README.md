@@ -84,11 +84,7 @@ GPU using just-in-time (JIT) compilation. When the deployment GPU is known, repl
 appropriate hardware-specific architecture, as described in
 [Choose a CUDA target architecture](#choose-a-cuda-target-architecture).
 
-### Using the Holoscan CLI
 
-The Holoscan CLI cannot currently build this example from this repository because it requires a
-repository-level CMake build. Use the
-[manual Docker and CMake workflow](#manual-docker-and-cmake-workflow).
 
 ### Manual Docker and CMake workflow
 
@@ -266,7 +262,7 @@ environment:
 ```bash
 python3 -m venv .cross/cmake-venv
 . .cross/cmake-venv/bin/activate
-python -m pip install 'cmake==4.0.3'
+python -m pip install 'cmake>=4.0.3'
 cmake --version
 ```
 
@@ -638,9 +634,7 @@ explicitly or use a sysroot captured from the exact target root filesystem.
 
 #### Add TensorRT development files (optional)
 
-TensorRT is not needed by this hello-world example. Applications using the Holoscan Inference
-component need its matching AArch64 runtime and development packages, including TensorRT headers
-and link libraries; extracting the Core package alone does not supply them.
+The "Hello World" example described above focuses on the Holoscan SDK core library minimal dependency set only. A real application might additionally rely on other domain-specific libraries such as the Holoscan Inference module, which in turn leverages the NVIDIA TensorRT backend. Applications using Holoscan Inference need its matching AArch64 runtime and development packages, including TensorRT headers and link libraries; extracting the Core package alone does not supply them.
 
 In the pinned package set, the `holoscan-inference-cuda-13` metapackage depends on
 `libholoscan-inference-dev-cuda-13`. Download and inspect that development package and its matching
@@ -648,7 +642,7 @@ Holoscan runtime dependencies, then extract those SDK packages into `.cross/holo
 Keep them out of the external dependency manifest below: resolving their complete apt dependency
 closure can pull in an AArch64 CUDA compiler, while this builder uses native NVCC and Cross-SBSA.
 
-Choose a TensorRT release compatible with the selected SDK 5 package, CUDA version, and target OS.
+Choose a TensorRT release compatible with the selected Holoscan SDK 5 package, CUDA version, and target OS.
 Use the SDK's package metadata and NVIDIA's
 [TensorRT Debian installation guide](https://docs.nvidia.com/deeplearning/tensorrt/latest/installing-tensorrt/install-debian.html)
 to identify the required development and runtime packages. For a project that needs TensorRT's inference
