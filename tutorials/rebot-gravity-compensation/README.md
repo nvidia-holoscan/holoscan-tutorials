@@ -2,6 +2,10 @@
 
 *Build a responsive gravity-compensation loop with Pinocchio, a Seeed Studio reBot arm, and a simple Holoscan graph in Python or C++.*
 
+![A person guides the reBot arm by hand while gravity compensation supports it.](images/gravity-compensation.jpg)
+
+*The controller updates joint torques as the person changes the arm's pose.*
+
 Imagine effortlessly guiding a robot arm by hand while its motors carefully supply just the right amount of torque needed to support its weight and keep the robot upright. This simple interaction is a useful starting point for robots that learn by demonstration, manipulate objects, or work alongside people.
 
 Building a gravity-compensation loop is only possible by continuously calculating the inverse dynamics of the system based on precise models of all the links of the robot arm, their dimensions, masses, and moments of inertia. And importantly, this calculation requires knowing the current state of the robot. This calculation needs to be done rapidly, with low jitter, and low latency, so gravity-comp demos are an excellent proof of life for both the robot model and the runtime that's executing these algorithms.
@@ -198,10 +202,6 @@ build/python-venv/bin/python python/gravity_compensation.py
 ```
 
 When `Gravity compensation active` appears, guide the arm by hand. Return it home manually before pressing Ctrl+C, which disables the motors.
-
-![A person guides the reBot arm by hand while gravity compensation supports it.](images/gravity-compensation.jpg)
-
-*The controller updates joint torques as the person changes the arm's pose.*
 
 ## Measure latency and jitter with Nsight Systems
 
