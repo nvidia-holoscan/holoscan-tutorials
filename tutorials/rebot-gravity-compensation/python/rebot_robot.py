@@ -22,6 +22,7 @@ Feedback timestamps date host cache reads, not receipt of motor packets.
 from dataclasses import dataclass
 import math
 from pathlib import Path
+import sys
 import threading
 import time
 
@@ -273,6 +274,12 @@ class Robot:
                             break
                         except Exception:
                             continue
+                    else:
+                        try:
+                            print(f"Warning: failed to disable joint {self.config.joints[i].name} "
+                                  "after 3 attempts; motor may still be energized.", file=sys.stderr)
+                        except Exception:
+                            pass  # A broken stderr must not interrupt cleanup of other motors.
                     self.owned[i] = False
 
     def close(self):

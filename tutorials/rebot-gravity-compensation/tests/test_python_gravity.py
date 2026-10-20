@@ -32,7 +32,7 @@ import sys
 import tempfile
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import DEFAULT, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "python"))
@@ -252,11 +252,42 @@ class HardwareGraphTests(unittest.TestCase):
     def test_cleanup_continues_after_unexpected_disable_error(self):
         self.prepare()
         self.fake.fake_set_status(0, 13)
+        stderr = io.StringIO()
         with patch.object(self.robot.motors[0], "disable",
-                          side_effect=RuntimeError("injected cleanup failure")) as disable:
+                          side_effect=RuntimeError("injected cleanup failure")) as disable, \
+                contextlib.redirect_stderr(stderr):
             with self.assertRaisesRegex(ValueError, "status=13"):
                 self.robot.read_state(1)
         self.assertEqual(disable.call_count, 3)
+        self.assertEqual(self.fake.fake_disables(), 6)
+        self.assertFalse(any(self.robot.owned))
+        self.assertEqual(stderr.getvalue().splitlines(), [
+            "Warning: failed to disable joint joint1 after 3 attempts; motor may still be energized."
+        ])
+
+    def test_transient_disable_error_recovers_without_warning(self):
+        self.prepare()
+        stderr = io.StringIO()
+        with patch.object(self.robot.motors[0], "disable",
+                          wraps=self.robot.motors[0].disable,
+                          side_effect=[RuntimeError("transient failure"), DEFAULT]) as disable, \
+                contextlib.redirect_stderr(stderr):
+            self.robot.disable()
+        self.assertEqual(disable.call_count, 2)
+        self.assertEqual(self.fake.fake_disables(), 7)
+        self.assertFalse(any(self.robot.owned))
+        self.assertEqual(stderr.getvalue(), "")
+
+    def test_broken_stderr_does_not_interrupt_cleanup(self):
+        self.prepare()
+        self.fake.fake_set_status(0, 13)
+        stderr = io.StringIO()
+        stderr.close()
+        with patch.object(self.robot.motors[0], "disable",
+                          side_effect=RuntimeError("injected cleanup failure")), \
+                contextlib.redirect_stderr(stderr):
+            with self.assertRaisesRegex(ValueError, "status=13"):
+                self.robot.read_state(1)
         self.assertEqual(self.fake.fake_disables(), 6)
         self.assertFalse(any(self.robot.owned))
 
