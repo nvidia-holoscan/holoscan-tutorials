@@ -14,10 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG CROSS_BASE_IMAGE=ubuntu:24.04
+ARG BASE_IMAGE=ubuntu:24.04
 
 # Reject unsupported build hosts before installing the cross-compilation dependencies.
-FROM ${CROSS_BASE_IMAGE} AS build-host
+FROM ${BASE_IMAGE} AS build-host
 
 ARG BUILDARCH
 

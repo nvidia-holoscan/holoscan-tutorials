@@ -1,5 +1,5 @@
 {
-  "$schema": "urn:holohub:tutorial:v1",
+  "$schema": "urn:holoscan:tutorial:v1",
   "tutorial": {
     "name": "Cross Compilation Example",
     "description": "Cross-compile a minimal Holoscan C++ application for Jetson AGX Thor and IGX Thor",
@@ -10,8 +10,9 @@
       }
     ],
     "language": "C++",
-    "version": "2.0",
+    "version": "2.1",
     "changelog": {
+      "2.1": "Restore Holoscan CLI build, run, and install support",
       "2.0": "Initial update for Holoscan SDK 5.0"
     },
     "holoscan_sdk": {

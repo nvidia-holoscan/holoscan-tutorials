@@ -72,7 +72,10 @@ This tutorial covers two workflows:
 
 - An x86_64 Linux host with Docker Engine and BuildKit.
 - Internet access while building the image.
+- `holoscan-core-cuda-13:arm64` available from APT when the image is built.
 - `file` and `readelf` (`binutils`) on the host for the final artifact checks.
+- For the CLI workflow: Python 3.11 or newer and `holoscan-cli==5.0.0` installed
+  in a Python environment, such as a virtual environment.
 - Optional: A Jetson AGX Thor Developer Kit with JetPack 7.2.1, or an IGX Thor Developer Kit or
   Developer Kit Mini with IGX-SW 2.0, for deployment and runtime validation.
 
@@ -84,7 +87,38 @@ GPU using just-in-time (JIT) compilation. When the deployment GPU is known, repl
 appropriate hardware-specific architecture, as described in
 [Choose a CUDA target architecture](#choose-a-cuda-target-architecture).
 
+### Holoscan CLI workflow
 
+Run these commands from the repository root. The CLI selects this tutorial's
+cross-compilation mode, builds its container from `ubuntu:24.04`, cross-compiles
+the application, and stages it in the repository's ignored `build/` directory.
+The explicit base image is required by CLI 5.0.0 for source repositories.
+
+```bash
+holoscan list
+holoscan modes cross_compilation_example
+holoscan install cross_compilation_example --base-img ubuntu:24.04
+
+# Check the build-tree executable without rebuilding the image or application
+holoscan run cross_compilation_example \
+  --base-img ubuntu:24.04 --no-docker-build --no-local-build
+```
+
+To build without staging an install, run
+`holoscan build cross_compilation_example --base-img ubuntu:24.04` instead of
+`holoscan install`.
+
+`holoscan run` checks that the build-tree executable is AArch64; it does not
+execute that binary on the x86_64 build host. Set `CROSS_COMPILED_APP` to the
+staged CLI executable used for deployment:
+
+```bash
+CROSS_COMPILED_APP=build/cross_compilation_example/install/bin/cross_compilation_example
+```
+
+The `file` and `readelf` commands in [Verify the result](#verify-the-result)
+check this staged executable. If target hardware is available, continue with
+[Deploy and validate on a Thor target](#deploy-and-validate-on-a-thor-target).
 
 ### Manual Docker and CMake workflow
 
