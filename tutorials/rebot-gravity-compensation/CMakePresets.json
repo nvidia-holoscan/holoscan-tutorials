@@ -3,7 +3,7 @@
   "cmakeMinimumRequired": {"major": 4, "minor": 0, "patch": 0},
   "configurePresets": [{
     "name": "default",
-    "displayName": "Holoscan 5 gravity compensation",
+    "displayName": "HSDK 5.0 gravity compensation",
     "generator": "Ninja",
     "binaryDir": "${sourceDir}/build",
     "cacheVariables": {

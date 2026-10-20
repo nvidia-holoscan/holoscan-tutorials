@@ -271,7 +271,7 @@ class Robot:
                         try:
                             self.motors[i].disable()
                             break
-                        except CallError:
+                        except Exception:
                             continue
                     self.owned[i] = False
 

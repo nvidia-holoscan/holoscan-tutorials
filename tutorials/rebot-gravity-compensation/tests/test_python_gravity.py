@@ -249,6 +249,17 @@ class HardwareGraphTests(unittest.TestCase):
             self.robot.read_state(1)
         self.assertEqual(self.fake.fake_disables(), 7)
 
+    def test_cleanup_continues_after_unexpected_disable_error(self):
+        self.prepare()
+        self.fake.fake_set_status(0, 13)
+        with patch.object(self.robot.motors[0], "disable",
+                          side_effect=RuntimeError("injected cleanup failure")) as disable:
+            with self.assertRaisesRegex(ValueError, "status=13"):
+                self.robot.read_state(1)
+        self.assertEqual(disable.call_count, 3)
+        self.assertEqual(self.fake.fake_disables(), 6)
+        self.assertFalse(any(self.robot.owned))
+
     def test_host_watchdog_covers_missing_first_graph_command(self):
         with patch.dict(os.environ, MOTORBRIDGE_LIB=str(FAKE)), \
                 patch.object(Robot, "send_command", lambda robot, command: None), \

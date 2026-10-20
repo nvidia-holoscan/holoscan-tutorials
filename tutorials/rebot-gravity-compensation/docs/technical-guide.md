@@ -4,7 +4,7 @@ This companion to the [tutorial](../README.md) covers configuration, the dynamic
 
 ## Configuration
 
-Install the Python dependencies using the [README setup](../README.md#set-up-the-python-example). Python uses the official motorbridge wheel and its bundled driver; it needs no C++ or Rust build. Leave `MOTORBRIDGE_LIB` unset for hardware runs. Tests use that override to select a fake driver.
+Fetch the robot model and install the Python dependencies using the [README setup](../README.md#set-up-the-python-example). Python uses the official motorbridge wheel and its bundled driver; it needs no C++ or Rust build. Leave `MOTORBRIDGE_LIB` unset for hardware runs. Tests use that override to select a fake driver.
 
 [config/rebotarm_dm.yaml](../config/rebotarm_dm.yaml) defines the serial device, motor IDs and models, URDF path, arm/gripper groups, watchdog, and gravity gains. Check the device and IDs against your arm before running. The account needs access to the serial device; `/dev/serial/by-id/...` can provide a stable path across reconnects.
 
@@ -14,16 +14,19 @@ Python validates the YAML with `hsdk.config.parse()`, reads it through PyYAML, a
 
 ## C++ build
 
-Install Holoscan 5 with its development components, a C++20 compiler, CMake 4 or newer, Ninja, Git, Rust/Cargo, and Python 3.12 or newer. Then run:
+Install HSDK 5.0 with its development components, a C++20 compiler, CMake 4 or newer, Ninja, Git, Rust/Cargo, and Python 3.12 or newer. The tested SDK build is 5.0.0.7. Setup needs network access to clone the pinned Seeed model repository, install Python wheels, clone motorbridge, and download its locked Cargo dependencies from crates.io. Then run:
 
 ```bash
+python3.12 scripts/fetch-urdf.py
 ./scripts/bootstrap-deps.sh
 cmake --preset default
 cmake --build --preset default
 ctest --preset default
 ```
 
-The bootstrap installs Pinocchio's native libraries and development files from wheels into `.venv`. The pinned dependencies in [requirements-build.txt](../requirements-build.txt) keep compatible library versions together. Keep this environment in place while using the build.
+The bootstrap uses `python3.12` by default and installs Pinocchio's native libraries and development files from wheels into `.venv`. If your Python 3.12-or-newer interpreter has another name, select it with `REBOT_PYTHON=/path/to/python ./scripts/bootstrap-deps.sh`; the system `python3` may be older. The pinned dependencies in [requirements-build.txt](../requirements-build.txt) keep compatible library versions together. Keep this environment in place while using the build.
+
+The build preset uses two parallel jobs to limit peak memory use. On a host with more memory, override it with `cmake --build --preset default --parallel N`.
 
 CMake uses the installed `holoscan` package, its exported targets, and `holoscan_add_flatbuffer_schema()`. For a nonstandard SDK installation, pass `-DCMAKE_PREFIX_PATH=/path/to/holoscan/install` when configuring. The C++ build fetches and builds unmodified motorbridge with Cargo; the Python example obtains the same driver version from pip. Both retain the stock driver's behavior.
 
@@ -60,7 +63,7 @@ q_model = s × q_motor
 
 The direction must also apply to torque to preserve joint work. Gravity is `(0, 0, −9.81)` m/s² in the fixed base frame. A different mounting orientation or added payload requires the corresponding model change.
 
-URDF joint origins and axes express the geometry that might otherwise be described by DH parameters. Masses and center-of-mass placements determine gravity torque; rotational inertia tensors matter during acceleration. A static gravity test therefore checks geometry, calibration, and mass distribution, but cannot validate every inertia parameter. The included [model](../urdf/DM/urdf/ReBot_Arm_DM.urdf) omits visual and collision meshes; [model provenance](../urdf/SOURCES.md) records its origin.
+URDF joint origins and axes express the geometry that might otherwise be described by DH parameters. Masses and center-of-mass placements determine gravity torque; rotational inertia tensors matter during acceleration. A static gravity test therefore checks geometry, calibration, and mass distribution, but cannot validate every inertia parameter. The [fetch script](../scripts/fetch-urdf.py) obtains the model from Seeed and removes visual and collision geometry and rendering materials. The generated model is ignored by Git; [model provenance](../urdf/SOURCES.md) records its origin and checksum.
 
 The motors implement the MIT control law:
 
@@ -130,7 +133,7 @@ Affinity fixes placement; reserving the CPU from other tasks is a separate Linux
 
 ## Tests without hardware
 
-After the C++ build above, run the Python tests using the same fake motor ABI:
+After fetching the model and completing the C++ build above, run the Python tests using the same fake motor ABI:
 
 ```bash
 build/python-venv/bin/python tests/test_python_gravity.py

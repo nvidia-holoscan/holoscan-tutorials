@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Hold a Cartesian point with five Holoscan 5 operators.
+"""Hold a Cartesian point with five HSDK 5.0 operators.
 
 Start at home, hand-position in gravity compensation, then enter h to hold.
 Enter g to release the hold. Return home manually before Ctrl+C.

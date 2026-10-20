@@ -18,7 +18,7 @@
 set -euo pipefail
 
 rebot_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-rebot_python="${REBOT_PYTHON:-python3}"
+rebot_python="${REBOT_PYTHON:-python3.12}"
 rebot_env="$rebot_root/.venv"
 
 if command -v uv >/dev/null 2>&1; then

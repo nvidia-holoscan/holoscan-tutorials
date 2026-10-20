@@ -88,8 +88,8 @@ messages::GravityCommandT GravityCompensation::compute(const messages::JointStat
   for (std::size_t j = 0; j < config_.arm_indices.size(); ++j) {
     const auto i = config_.arm_indices[j];
     output.position[i] = arm.position[j];
-    output.kp[i] = arm.kp[j];
-    output.kd[i] = arm.kd[j];
+    output.kp[i] = parameters.kp;
+    output.kd[i] = parameters.kd;
     output.torque[i] = arm.torque[j];
   }
   return output;

@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The gravity-compensation demo using Holoscan 5's native Python operators.
+"""The gravity-compensation demo using HSDK 5.0's native Python operators.
 
 Run from the tutorial directory (tutorials/rebot-gravity-compensation): python python/gravity_compensation.py
 Return the arm to its home position manually before pressing Ctrl+C.

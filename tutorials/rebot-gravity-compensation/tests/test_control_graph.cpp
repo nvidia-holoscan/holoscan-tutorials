@@ -65,6 +65,29 @@ int main() try {
       .patched(Edit::replace("/gravity_compensation/kp", encode_config(2.25)));
   const auto config = rebot::load_robot_config(document, path);
   const auto parameters = holoscan::params::decode<rebot::GravityParams>(document, "/gravity_compensation");
+  {
+    rebot::GravityCompensation controller(config);
+    controller.initialize(*parameters);
+    rebot::messages::JointStateT sample;
+    sample.sequence = 1;
+    sample.timestamp_ns = rebot::steady_now_ns();
+    sample.position = {0.1, -0.8, -0.5, 0.2, 0.15, -0.1, 0.0};
+    const auto initial = controller.compute(sample, *parameters, sample.timestamp_ns);
+    auto updated = *parameters;
+    updated.kp = 3.5;
+    updated.kd = 1.25;
+    ++sample.sequence;
+    const auto command = controller.compute(sample, updated, sample.timestamp_ns);
+    for (const auto i : config.arm_indices) {
+      check(command.kp[i] == updated.kp && command.kd[i] == updated.kd,
+            "each compute call must use its supplied arm gains");
+    }
+    check(command.kp.back() == config.joints.back().kp &&
+              command.kd.back() == config.joints.back().kd,
+          "per-call arm gains must preserve the gripper gains");
+    check(command.position == initial.position && command.torque == initial.torque,
+          "changing gains must preserve position and gravity feedforward");
+  }
   for (bool fail : {false, true}) {
     fake.reset();
     auto robot = std::make_shared<rebot::RobotSession>(config, REBOT_TEST_MOTOR_LIBRARY);
