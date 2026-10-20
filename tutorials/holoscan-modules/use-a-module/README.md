@@ -17,14 +17,14 @@ directed acyclic graph (DAG) by the SDK's pipeline executor.
 
 A **Holoscan Module** is a distributable project library of one or more related operators, subgraphs, or
 other components to extend the Holoscan SDK application programming interface (API). A module
-may be packaged and published so that any Holoscan application can consume it as a binary
-dependency. It is the standard mechanism for sharing reusable Holoscan processing blocks
-beyond a single application or repository. Consumers get a working, namespaced import ready to use
-out of the box, without needing to learn the intricate project build details.
+may be packaged and published so that other Holoscan applications can consume it as a binary
+dependency. It is a way to share reusable Holoscan processing blocks beyond a single application
+or repository. The import and build integration depend on which C++ and Python artifacts the
+Module maintainer publishes.
 
 ```py
-# Example Usage
-from holoscan.my_sensor import MySensorOp
+# For an SDK 5 Module generated with --language cpp python:
+from holoscan_my_sensor.operators import MySensorOp
 ```
 
 The primary form of a Module is a standalone **External Module** — a git repository with
@@ -32,7 +32,8 @@ its own operators, applications, tests, packaging, and CI. Consumers fetch its s
 build time or install a published binary package.
 
 In this tutorial we use a fictional `holoscan-my-sensor` external Module as the running
-worked example.
+worked example. Its URLs, package names, and commit SHA are placeholders, not a published
+release. Substitute a real Module, or create one with the companion tutorial.
 
 ### Who consumes a Holoscan Module?
 
@@ -80,8 +81,8 @@ each path's section below calls out anything extra it needs.
 - [Python >=3.12](https://www.python.org/downloads/) for Holoscan CLI.
   Binary consumers follow the Python requirements of their SDK and module wheels.
 - For Path C, install the [Holoscan CLI](https://github.com/nvidia-holoscan/holoscan-cli)
-  in the consuming project's development environment. The examples use `holoscan-cli==5.0.0rc3`
-  from NVIDIA's Python index, as in the
+  in the consuming project's development environment. The examples use `holoscan-cli==5.0.0`,
+  matching the
   [Create a Module tutorial](../create-a-module/README.md#32-set-up-the-generated-development-environment).
 
 ### Container Approach (Recommended for the CLI Workflow)
@@ -123,7 +124,8 @@ created from template can support Debian C++ binary packaging out of the box.
 ### 4.1 Install the binary
 
 Review the Module's `metadata.json:module.binary_packages` for recommended installation commands.
-For example, the installation command to add to your Dockerfile or host setup script might install from a public APT repository:
+For a Module actually published to your configured APT repository, the installation command
+might be:
 
 ```bash
 # Debian / Ubuntu
@@ -184,7 +186,7 @@ and best practices. A binary installation is usually a simpler choice for fully 
 As an alternative to writing CMake code yourself, the Holoscan CLI provides a simplified
 interface to generate CMake `FetchContent` strings from CLI standard `metadata.json`.
 
-If the extenral module is also aligned to Holoscan CLI, you can simply declare the dependency
+If the external module is also aligned to Holoscan CLI, you can simply declare the dependency
 in your project's metadata and offload manifest generation, discovery, and build commands
 to Holoscan CLI and CMake.
 
@@ -298,28 +300,38 @@ holoscan build my_app \
 
 While the override is set, the resolver uses that working tree instead of
 `source.ref`. For native `--local` builds, set the variable to the host path.
-Unset it to return to the pinned dependency. Standalone modules use the same
-options with `holoscan build <app>` and can persist the variable name in
-`tool.holoscan.forward-env`; keep machine-specific mount paths on the command line.
+In CLI `5.0.0`, CMake retains `FETCHCONTENT_SOURCE_DIR_HOLOSCAN_MY_SENSOR` in an existing
+build cache after the environment variable is unset. Clear that entry or start from a clean build
+when returning to the pinned dependency:
+
+```bash
+unset HOLOSCAN_CLI_LOCAL_HOLOSCAN_MY_SENSOR
+holoscan build my_app --configure-args=-UFETCHCONTENT_SOURCE_DIR_HOLOSCAN_MY_SENSOR --dryrun --verbose
+holoscan build my_app --configure-args=-UFETCHCONTENT_SOURCE_DIR_HOLOSCAN_MY_SENSOR
+```
+
+Standalone modules use the same options with `holoscan build <app>` and can persist the variable
+name in `tool.holoscan.forward-env`; keep machine-specific mount paths on the command line.
 
 ### 6.5 Use the operators in your code
 
-Python application:
+For Python, the Module must also provide Holoscan SDK 5 bindings. A Module generated with
+`--language cpp python` exposes the proxy through `holoscan_my_sensor.operators`.
+Within an existing SDK 5 graph with compatible source and sink ports:
 
 ```python
-from holoscan.core import Application
-from holoscan.my_sensor import MySensorOp
-from holoscan.operators import HolovizOp
+from holoscan_my_sensor.operators import MySensorOp
 
-class MyApp(Application):
-    def compose(self):
-        sensor = MySensorOp(self, name="sensor")
-        viz = HolovizOp(self, name="viz")
-        self.add_flow(sensor, viz, {("out", "receivers")})
-
-if __name__ == "__main__":
-    MyApp().run()
+sensor = MySensorOp(graph, "sensor")
+graph.add_flow(source.output, sensor["in"])
+graph.add_flow(sensor.out, sink.input)
 ```
+
+This is a composition fragment, not a complete application. See the
+[finite SDK 5 Python example](../create-a-module/README.md#45-call-the-operator-from-python)
+for the source/sink definitions, graph compilation, and cooperative termination. The module's
+Python package must be installed or on `PYTHONPATH`; fetching its C++ sources alone does not
+make Python bindings importable.
 
 C++ application: include the public header the Module installs (path is documented in
 its README) and link via the Module's exported targets in your application's
@@ -345,11 +357,15 @@ exit nonzero when dependencies are missing.
 
 ### 6.7 Module-to-module (transitive) dependencies
 
-If you are building a Holoscan Module that itself depends on another Module, use the
-`module.dependencies[]` array in your module's `metadata.json` — it follows the same
-schema as the `application.dependencies.modules[]` shown in §6.2 above. Refer to the
-"Create a Holoscan Module" tutorial for the full schema and SHA-pinning discipline,
-and to §6.4 above for mounted-source iteration.
+If you are building a Holoscan Module that itself depends on another Module, declare it in
+`module.dependencies[]` in the module's `metadata.json`. It follows the same dependency schema
+as `application.dependencies.modules[]` in §6.2.
+
+**Note:** CLI `5.0.0` does not merge Module-root dependencies into a selected application's
+manifest. With only the Module-root declaration, the manifest is empty and CMake reports
+`No content details recorded`. Also declare the dependency in the selected application's
+`application.dependencies.modules[]` and keep both declarations consistent. See §6.3 for the
+CMake integration and §6.4 for mounted-source iteration.
 
 From a standalone module, we recommend using a `uv` environment with Python >=3.12:
 
@@ -369,36 +385,23 @@ build, select the SDK explicitly with `--local-sdk-root /path/to/sdk`.
 
 ## 7. Path D — External Python Project (Pip Install)
 
-Module wheels available on PyPI can be installed like any other PyPI dependency:
+Use this path only when the Module maintainer publishes a compatible wheel. The SDK 5 CLI
+template does not build Module wheels, and the fictional sensor package below is not available
+for installation. For a real published Module, follow its SDK/CUDA and package-index instructions:
 
 ```bash
 pip install holoscan              # the SDK matching your CUDA variant
 pip install holoscan-my-sensor    # the module
 ```
 
-Use the operator like any built-in Holoscan operator:
-
-```python
-from holoscan.core import Application
-from holoscan.my_sensor import MySensorOp
-from holoscan.operators import HolovizOp
-
-class MyApp(Application):
-    def compose(self):
-        self.add_flow(
-            MySensorOp(self, name="sensor"),
-            HolovizOp(self, name="viz"),
-            {("out", "receivers")},
-        )
-
-if __name__ == "__main__":
-    MyApp().run()
-```
+Use the import path documented by that Module. For the SDK 5 scaffold's Python bindings, see
+[section 6.5](#65-use-the-operators-in-your-code); SDK 4 `Application`/`compose()` examples do
+not describe the SDK 5 graph API used by this tutorial.
 
 
 > **Version note:** Holoscan CLI `5.0.0` does not yet support Python wheel packaging
 > with Holoscan SDK `5.0.0` sources out of the box. Use the pre-built Holoscan SDK
-> wheels distributed via PyPI. Wheel authoring support are planned for a later
+> wheels distributed via PyPI. Wheel authoring support is planned for a later
 > Holoscan SDK release.
 
 
@@ -414,7 +417,7 @@ if __name__ == "__main__":
 | Install binary (C++) | `apt install holoscan-<name>` |
 | Install binary (Python) | `pip install holoscan-<name>` |
 | Use from C++ | `find_package(holoscan-<name> REQUIRED)` + `target_link_libraries(... holoscan::<target>)` |
-| Use from Python | `from holoscan.my_module import MyOp` (substitute your Module name) |
+| Use generated SDK 5 bindings from Python | `from holoscan_my_module.operators import MyOp` (requires bindings on `PYTHONPATH`) |
 | Use CLI-declared sources (Path C) | Include the generated manifest and call `FetchContent_MakeAvailable(...)` in the consuming CMake project |
 | Embed via source — fully external (Path B) | `FetchContent_Declare(...)` + `FetchContent_MakeAvailable(...)` |
 | Inspect a standalone Module | `holoscan --project-root /path/to/module list --json` |
@@ -425,9 +428,10 @@ if __name__ == "__main__":
 - **`find_package(holoscan-my-sensor)` fails.** Confirm install:
   `dpkg -L holoscan-my-sensor | grep cmake`. Add the prefix to `CMAKE_PREFIX_PATH`
   if it is not in a standard location.
-- **`import holoscan.my_sensor` raises `ModuleNotFoundError`.** Check that
-  `pip show holoscan-my-sensor` succeeds in the same Python environment, and that the
-  Holoscan SDK wheel is installed in that same env.
+- **The Module's Python import raises `ModuleNotFoundError`.** For generated SDK 5 bindings,
+  use `from holoscan_my_sensor.operators import MySensorOp` and put the built or installed
+  bindings on `PYTHONPATH`. The generated DEB contains C++ artifacts only. If a maintainer
+  supplies a wheel, verify it and the compatible SDK wheel are installed in the same environment.
 - **Resolver rejects a ref that is not a 40-character commit SHA.** Replace the tag or branch
   in `source.ref` with the commit SHA it resolves to.
 - **`HOLOSCAN_CLI_LOCAL_*` override has no effect.** Derive the suffix from the
@@ -439,10 +443,11 @@ if __name__ == "__main__":
   operators marked with `OP_<op>=ON` get built. In either source-build path (B or C), pass
   `-DOP_<op>=ON` on the configure line or `set(...)` it before
   `FetchContent_MakeAvailable`.
-- **CMake fails with "No content recorded" inside `FetchContent_MakeAvailable`.** The external operators manifest is stale. Delete
-  `external_operators_manifest.cmake` from the selected project's build directory and rebuild
-  with `holoscan build <app>`; the resolver regenerates it. Confirm the root `CMakeLists.txt`
-  includes that manifest before calling `FetchContent_MakeAvailable`.
+- **CMake fails with "No content details recorded" inside `FetchContent_MakeAvailable`.**
+  Inspect `external_operators_manifest.cmake` in the selected application's
+  build directory. Confirm the dependency is declared on that application (see §6.7), the
+  manifest declares the expected provider, and the root `CMakeLists.txt` includes it before
+  `FetchContent_MakeAvailable`. Re-run `holoscan build <app>` after correcting the metadata.
 
 ## 10. Next Steps
 

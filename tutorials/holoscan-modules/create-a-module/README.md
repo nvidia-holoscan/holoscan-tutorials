@@ -64,6 +64,7 @@ recommended because it keeps the SDK, CUDA, compiler, and system dependencies to
 Install:
 
 - Python 3.12, 3.13, or 3.14 for the exact `holoscan-cli` commands in this tutorial
+- Python virtual-environment support (`python3.12-venv` on Ubuntu 24.04) if using the pip path
 - Docker with the Buildx plugin
 - NVIDIA Container Toolkit 1.14 or later
 - (Optional) [uv](https://docs.astral.sh/uv/getting-started/installation/), or a Python virtual environment
@@ -87,7 +88,7 @@ pytest, and the Holoscan SDK Python package for the same SDK version, importable
 The SDK Debian packages don't include the Python package; the development container does. CMake
 downloads nanobind 3.0.1 while configuring when it isn't installed, which needs network access.
 
-The CLI version does not select the SDK version. This tutorial uses the latest Holoscan CLI and
+The CLI version does not select the SDK version. This tutorial pins Holoscan CLI `5.0.0` and
 explicitly selects Holoscan SDK `5.0.0`.
 
 ## 3. Create an External Module
@@ -101,10 +102,13 @@ published package or immutable source location.
 Start in the directory that will contain the new repository. Pass the friendly, unprefixed name
 `my-module`; the CLI will derive `holoscan-my-module` and the related C++ identifiers.
 
-**Quick Start**: Run the following in a standard Python environment for an interactive setup:
+**Quick Start**: Start in a new parent directory and use an isolated Python environment for
+interactive setup:
 
 ```bash
-pip install 'holoscan-cli[create]==5.0.0'
+python3.12 -m venv .cli-venv
+source .cli-venv/bin/activate
+python -m pip install 'holoscan-cli[create]==5.0.0'
 holoscan create my-module    # simplified command for interactive setup
 ```
 
@@ -170,7 +174,8 @@ uv run holoscan version --json
 uv run holoscan list --json
 ```
 
-The generated project installs its development dependencies from PyPI. `pyproject.toml` has
+The generated `pyproject.toml` selects NVIDIA's Python index for the CLI; the pip fallback uses
+the indexes in `requirements-cli.txt`. `pyproject.toml` has
 `package = false`: uv is provisioning the development environment, not building a Python version
 of your Module.
 
@@ -184,7 +189,8 @@ holoscan version --json
 holoscan list --json
 ```
 
-In later shells, prefix commands with `uv run`, or reactivate `.venv` if you used pip.
+The parent `.cli-venv` is only for project generation. From the generated Module root, use
+`uv run` for later commands, or reactivate that Module's `.venv` if you used pip.
 
 ### 3.3 Inspect the generated tree
 
@@ -416,7 +422,8 @@ plan = hs.compile(graph)
 plan.require_no_errors()
 ```
 
-Build the example as in section 4.3, then run the Python version:
+Build the example as in section 4.3, then build and run the Python version. `holoscan run`
+builds the selected language before launching it:
 
 ```bash
 holoscan run my_module_pipeline --language python --dryrun --verbose
@@ -430,13 +437,15 @@ extension in `python/CMakeLists.txt`, and cover it in `tests/python`.
 
 The `HOLOSCAN_MY_MODULE_BUILD_PYTHON` CMake option controls the bindings. It defaults to `ON` for a
 standalone build and `OFF` when another project includes the Module or when packaging. To run the
-Python example from a plain CMake build (section 4.6), add the build's Python directory in front of
-the SDK's existing `PYTHONPATH`:
+Python example directly after the CLI run, execute this inside the development container,
+adding the application build's Python directory in front of the SDK's existing `PYTHONPATH`:
 
 ```bash
-PYTHONPATH=build/python/lib:$PYTHONPATH \
+PYTHONPATH=build/my_module_pipeline/python/lib:$PYTHONPATH \
   python3 applications/my_module_pipeline/python/my_module_pipeline.py
 ```
+
+For a native Python build, use `build-native/my_module_pipeline/python/lib` instead.
 
 ### 4.6 Build and test natively
 
@@ -453,8 +462,8 @@ holoscan test --local --verbose
 unset HOLOSCAN_CLI_BUILD_PARENT_DIR
 ```
 
-When these commands finish, `build-native/` should contain the native artifacts while the normal
-container build remains untouched. Select a specific SDK with `--local-sdk-root /path/to/sdk` or
+The build goes to `build-native/my_module_pipeline`; CLI `5.0.0` tests with a separate dashboard
+build in `build-/`. Select a specific SDK with `--local-sdk-root /path/to/sdk` or
 `HOLOSCAN_SDK_ROOT`. Holoscan SDK installs use architecture-qualified layouts such as `install-x86_64`
 and `install-aarch64`.
 
@@ -518,20 +527,28 @@ The Debian package contains the C++ operators only. If the Module has Python bin
 use it by appending its installation path to your local `PYTHONPATH` environment variable:
 
 ```bash
-cmake --install build --component holoscan-my-module-python --prefix "$PWD/build/install"
+# First run the Python variant as shown in section 4.5.
+cmake --install build/my_module_pipeline --component holoscan-my-module-python \
+  --prefix "$PWD/build/install"
 PYTHONPATH="$PWD/build/install/lib/python3.12/site-packages:$PYTHONPATH" \
   python3 -c "import holoscan_my_module; print(holoscan_my_module.__file__)"
 ```
 
 Pass `--prefix` because the default `/usr/local` prefix isn't writable in the development container
-and isn't on Ubuntu's Python path. A prefix inside `build/` stays out of Git. Replace `python3.12`
-if you use a different Python version. Note that Module projects based on Holoscan SDK 5.0
-do not fully support building Python wheels for distribution yet.
+and isn't on Ubuntu's Python path. Run these commands inside the development container after
+building the application with Python bindings. A prefix inside `build/` stays out of Git.
+Replace `python3.12` if you use a different Python version. Module projects based on Holoscan
+SDK 5.0 do not fully support building Python wheels for distribution yet.
 
 The final proof is installation in a clean consumer where the Holoscan Debian dependency is
 available. Extracting the archive may be useful for inspection, but it does not prove that APT can
 satisfy and install the declared dependencies. The template creates the artifact; your project's
 release process is responsible for publishing it to an APT repository.
+
+An SDK development image can contain the SDK files without a `holoscan` entry in the Debian
+package database. That alone does not satisfy the generated `Depends: holoscan (>= 5.0.0)`.
+Configure a repository that supplies the required SDK 5 Debian package before testing APT
+installation, and check its candidate version with `apt-cache policy holoscan`.
 
 ### 4.9 Configure shared defaults
 
@@ -602,7 +619,7 @@ Once you are familiar with the workflow, use this table as a quick reminder:
 | Run Python demo | `holoscan run <module>_pipeline --language python` |
 | Run CTest | `holoscan test` |
 | Package | `holoscan package holoscan-<name> --pkg-generator DEB` |
-| Install Python package | `cmake --install build --component holoscan-<name>-python --prefix <dir>` |
+| Install Python package | Build the Python variant, then `cmake --install build/<module>_pipeline --component holoscan-<name>-python --prefix <dir>` |
 | Use an explicit root | `holoscan --project-root /path/to/module <command>` |
 
 ## 6. Troubleshooting
@@ -617,7 +634,7 @@ release for an SDK 4 Module.
 ### `import holoscan` fails after setting `PYTHONPATH`
 
 The development container finds the SDK's Python package through its own `PYTHONPATH`. Add the
-Module's build directory in front (`PYTHONPATH=build/python/lib:$PYTHONPATH`) instead of
+Module's build directory in front (`PYTHONPATH=build/my_module_pipeline/python/lib:$PYTHONPATH`) instead of
 replacing the variable.
 
 ### Graph compilation fails
