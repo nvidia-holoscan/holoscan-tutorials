@@ -24,14 +24,13 @@
       "x86_64"
     ],
     "tags": [
-      "Hello World",
       "Cross Compilation",
+      "Hello World",
       "IGX Thor",
       "Jetson AGX Thor"
     ],
-    "ranking": 4,
+    "ranking": 1,
     "requirements": {
-      "gxf_extensions": []
     },
     "dockerfile": "tutorials/cross_compilation_example/Dockerfile",
     "default_mode": "cross_compile",
