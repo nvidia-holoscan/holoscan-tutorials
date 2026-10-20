@@ -99,7 +99,7 @@ holoscan list
 holoscan modes cross_compilation_example
 holoscan install cross_compilation_example --base-img ubuntu:24.04
 
-# Inspect the existing build without rebuilding the image or application
+# Check the build-tree executable without rebuilding the image or application
 holoscan run cross_compilation_example \
   --base-img ubuntu:24.04 --no-docker-build --no-local-build
 ```
@@ -108,15 +108,16 @@ To build without staging an install, run
 `holoscan build cross_compilation_example --base-img ubuntu:24.04` instead of
 `holoscan install`.
 
-`holoscan run` checks that the generated executable is AArch64; it does not
+`holoscan run` checks that the build-tree executable is AArch64; it does not
 execute that binary on the x86_64 build host. Set `CROSS_COMPILED_APP` to the
-staged CLI executable for the inspection and deployment commands below:
+staged CLI executable used for deployment:
 
 ```bash
 CROSS_COMPILED_APP=build/cross_compilation_example/install/bin/cross_compilation_example
 ```
 
-Continue with [Verify the result](#verify-the-result) and, if target hardware is available,
+The `file` and `readelf` commands in [Verify the result](#verify-the-result)
+check this staged executable. If target hardware is available, continue with
 [Deploy and validate on a Thor target](#deploy-and-validate-on-a-thor-target).
 
 ### Manual Docker and CMake workflow
