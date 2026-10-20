@@ -17,7 +17,7 @@ set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_PROCESSOR aarch64)
 
 set(HOLOSCAN_CROSS_SYSROOT "/usr/aarch64-linux-gnu" CACHE PATH "GNU AArch64 sysroot")
-set(HOLOSCAN_TARGET_SDK_ROOT "/opt/nvidia/holoscan" CACHE PATH "AArch64 Holoscan SDK prefix")
+set(HOLOSCAN_TARGET_SDK_ROOT "/opt/holoscan-target/usr" CACHE PATH "AArch64 Holoscan SDK prefix")
 
 set(_HOLOSCAN_CROSS_NVCC "${CMAKE_CURRENT_LIST_DIR}/nvcc-cross-sbsa")
 

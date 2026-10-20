@@ -35,7 +35,7 @@ RUN test "$(dpkg --print-architecture)" = amd64 \
   && apt-get update \
   && apt-get install --yes --no-install-recommends \
   ca-certificates=20260601~24.04.1 \
-  curl=8.5.0-2ubuntu10.13 \
+  curl=8.5.0-* \
   file=1:5.45-3build1 \
   g++-aarch64-linux-gnu=4:13.2.0-7ubuntu1 \
   gnupg=2.4.4-2ubuntu17.6 \
@@ -68,7 +68,7 @@ RUN curl -fsSL \
   https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/sbsa \
   > /etc/apt/sources.list.d/nvidia-holoscan-sbsa.list
 
-# Install native NVCC and the AArch64 CUDA cross-compilation packages.
+# Install native NVCC, AArch64 CUDA packages, and the target SDK's header dependency.
 FROM cuda-repositories AS cuda-cross
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -77,6 +77,10 @@ RUN apt-get update \
   && apt-get install --yes --no-install-recommends \
   cuda-cross-sbsa-13-0=13.0.3-1 \
   cuda-nvcc-13-0=13.0.88-1 \
+  && cd /tmp \
+  && apt-get download libexpected-dev=1.1.0-2 \
+  && dpkg-deb --extract libexpected-dev_1.1.0-2_all.deb /opt/holoscan-target \
+  && rm -f libexpected-dev_1.1.0-2_all.deb \
   && rm -rf /var/lib/apt/lists/*
 
 # Download, validate, and extract only the AArch64 Holoscan SDK package needed by this example.
@@ -84,7 +88,7 @@ RUN apt-get update \
 # scripts; applications that use optional SDK backends must add their target dependencies explicitly.
 FROM cuda-cross AS holoscan-sdk
 
-ARG HOLOSCAN_DEB_VERSION=4.6.0.0-1
+ARG HOLOSCAN_DEB_VERSION=5.0.0.8.0-1
 
 RUN apt-get update \
   -o Dir::Etc::sourcelist=sources.list.d/nvidia-holoscan-sbsa.list \
@@ -95,14 +99,14 @@ RUN apt-get update \
   && apt-get download \
   -o APT::Architecture=arm64 \
   -o APT::Architectures=arm64 \
-  "holoscan-cuda-13:arm64=${HOLOSCAN_DEB_VERSION}" \
-  && test "$(dpkg-deb -f holoscan-cuda-13_${HOLOSCAN_DEB_VERSION}_arm64.deb Architecture)" = arm64 \
-  && test "$(dpkg-deb -f holoscan-cuda-13_${HOLOSCAN_DEB_VERSION}_arm64.deb Version)" = "${HOLOSCAN_DEB_VERSION}" \
-  && dpkg-deb --extract holoscan-cuda-13_${HOLOSCAN_DEB_VERSION}_arm64.deb / \
-  && test -f /opt/nvidia/holoscan/include/holoscan/holoscan.hpp \
-  && test -f /opt/nvidia/holoscan/lib/cmake/holoscan/holoscan-config.cmake \
-  && file -L /opt/nvidia/holoscan/lib/libholoscan_core.so | grep -q 'ARM aarch64' \
-  && rm -f holoscan-cuda-13_${HOLOSCAN_DEB_VERSION}_arm64.deb \
+  "holoscan-core-cuda-13:arm64=${HOLOSCAN_DEB_VERSION}" \
+  && test "$(dpkg-deb -f holoscan-core-cuda-13_${HOLOSCAN_DEB_VERSION}_arm64.deb Architecture)" = arm64 \
+  && test "$(dpkg-deb -f holoscan-core-cuda-13_${HOLOSCAN_DEB_VERSION}_arm64.deb Version)" = "${HOLOSCAN_DEB_VERSION}" \
+  && dpkg-deb --extract holoscan-core-cuda-13_${HOLOSCAN_DEB_VERSION}_arm64.deb /opt/holoscan-target \
+  && test -f /opt/holoscan-target/usr/include/holoscan/holoscan.hpp \
+  && test -f /opt/holoscan-target/usr/lib/aarch64-linux-gnu/cmake/holoscan/holoscan-config.cmake \
+  && file -L /opt/holoscan-target/usr/lib/aarch64-linux-gnu/libholoscan_core.so | grep -q 'ARM aarch64' \
+  && rm -f holoscan-core-cuda-13_${HOLOSCAN_DEB_VERSION}_arm64.deb \
   && rm -rf /var/lib/apt/lists/*
 
 # Install and verify the standalone Holoscan CLI used by the containerized build flow.
