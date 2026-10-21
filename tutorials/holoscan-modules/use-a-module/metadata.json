@@ -1,5 +1,5 @@
 {
-	"$schema": "urn:holohub:tutorial:v1",
+	"$schema": "urn:holoscan:tutorial:v1",
 	"tutorial": {
 		"name": "Use a Holoscan Module",
 		"description": "End-to-end walkthrough to consume a Holoscan SDK 5 Module from a standalone CLI project or external CMake project.",
