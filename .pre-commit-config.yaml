@@ -45,6 +45,16 @@ repos:
         # Deleting an asset can break links in otherwise unchanged Markdown.
         always_run: true
         pass_filenames: false
+      - id: holoscan-metadata-validate
+        name: Validate Holoscan metadata
+        entry: python .github/scripts/validate_metadata.py
+        language: python
+        additional_dependencies:
+          - holoscan-cli==5.0.0
+          - jsonschema>=4.18,<5
+          - referencing>=0.30
+        files: '(^|/)metadata\.json$'
+        types: [json]
       - id: check-python-compile
         name: Check Python compilation
         entry: python -m py_compile

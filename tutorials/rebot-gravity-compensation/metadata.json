@@ -1,5 +1,5 @@
 {
-  "$schema": "urn:holohub:tutorial:v1",
+  "$schema": "urn:holoscan:tutorial:v1",
   "tutorial": {
     "name": "Make a Robot Arm Feel Weightless with Holoscan 5",
     "description": "Use HSDK 5.0, part of the Holoscan 5 platform release, to build a low-latency gravity-compensation loop for a Seeed Studio reBot arm with Pinocchio in Python or C++, then measure latency and jitter with Nsight Systems",
