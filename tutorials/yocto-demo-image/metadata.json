@@ -9,17 +9,15 @@
         "affiliation": "NVIDIA"
       }
     ],
-    "language": [
-      "bitbake",
-      "CMake"
-    ],
-    "version": "1.0.0",
+    "version": "0.1.0",
     "changelog": {
-      "1.0.0": "Initial release"
+      "0.1.0": "Initial release"
     },
     "holoscan_sdk": {
       "minimum_required_version": "5.0.0",
-      "tested_versions": []
+      "tested_versions": [
+        "5.0.0"
+      ]
     },
     "platforms": [
       "x86_64",

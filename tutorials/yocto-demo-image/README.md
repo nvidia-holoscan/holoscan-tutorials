@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # Build and run the Holoscan Yocto demo on AGX Thor
 
-This tutorial takes you from a fresh Ubuntu host to a Jetson AGX Thor devkit
+This tutorial takes you from a fresh Ubuntu host to a Jetson AGX Thor T5000 devkit
 running a Holoscan application on a custom Yocto Linux image. Along the way you
 will:
 
