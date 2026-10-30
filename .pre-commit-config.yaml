@@ -1,3 +1,8 @@
+ci:
+  # The lychee-bin environment (~300 MiB) exceeds pre-commit.ci's 250 MiB
+  # per-hook limit. GitHub Actions still runs lychee on every pull request.
+  skip: [lychee]
+
 default_language_version:
   python: python3.12
 
