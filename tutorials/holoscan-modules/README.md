@@ -23,8 +23,9 @@ Browse published modules in the [Modules tab](https://nvidia-holoscan.github.io/
 
 Module operators are implemented in C++ or Python. For C++ operators, the scaffold can add Python
 bindings so Python applications can use them, and the packaged artifact is a Debian package.
-From Holoscan CLI `5.1.0`, `holoscan create --language python` creates a pure-Python Module that
-ships as a Python wheel and needs no C++ compiler.
+From Holoscan CLI `5.1.0`, the bindings can also ship as a Python wheel, and
+`holoscan create --language python` creates a pure-Python Module that ships as a Python wheel and
+needs no C++ compiler.
 
 The examples install `holoscan-cli` from PyPI; each tutorial pins the CLI version it uses. CLI and
 SDK versions are independent: the scaffold requires SDK `5.0.0` or later. See the
