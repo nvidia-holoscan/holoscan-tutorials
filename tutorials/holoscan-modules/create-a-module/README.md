@@ -33,7 +33,7 @@ its own build, tests, package, and CI.
 
 Module operators are implemented in either C++ or Python. For C++ operators, the scaffold can
 also add Python bindings: a small extension that registers the C++ operators with the SDK
-operator registry so Python applications can use them. For Python operators, it creates a
+operator registry so Python applications can use them, and that can ship as a Python wheel. For Python operators, it creates a
 pure-Python Module that needs no C++ code or compiler and ships as a Python wheel.
 
 ### Who creates a Holoscan Module?
@@ -177,7 +177,7 @@ A Module's operators are either all C++ or all Python:
 | `--language` | Operators | Use from Python | Package |
 | --- | --- | --- | --- |
 | `cpp` | C++ | No | Debian |
-| `cpp python` | C++ | Through generated Python bindings | Debian |
+| `cpp python` | C++ | Through generated Python bindings | Debian, plus a wheel for the bindings |
 | `python` | Python | Directly | Python wheel |
 
 ### 3.2 Set up the generated development environment
@@ -697,8 +697,20 @@ PYTHONPATH="$PWD/build/install/lib/python3.12/site-packages:$PYTHONPATH" \
 Pass `--prefix` because the default `/usr/local` prefix isn't writable in the development container
 and isn't on Ubuntu's Python path. Run these commands inside the development container after
 building the application with Python bindings. A prefix inside `build/` stays out of Git.
-Replace `python3.12` if you use a different Python version. Wheel packaging for Modules with
-Python bindings is planned for a later release.
+Replace `python3.12` if you use a different Python version.
+
+To ship the bindings to Python users instead, build them into a wheel:
+
+```bash
+holoscan package holoscan-my-module --pkg-generator WHEEL --dryrun --verbose
+holoscan package holoscan-my-module --pkg-generator WHEEL --verbose
+```
+
+scikit-build-core builds only the operator and its bindings, configured in `pyproject.toml`, and
+writes `build/dist/holoscan_my_module-0.1.0-cp312-abi3-linux_x86_64.whl`. The wheel works with
+Python 3.12 or later on the architecture it was built on, depends on `holoscan-core-cu13`, and
+declares the `holoscan.modules` entry point, so `import holoscan.my_module` works after
+`pip install`.
 
 The final proof is installation in a clean consumer where the Holoscan Debian dependency is
 available. Extracting the archive may be useful for inspection, but it does not prove that APT can
@@ -759,7 +771,8 @@ share it:
 1. Push the canonical repository and set `metadata.json:module.source_repository` to its URL.
 2. Replace placeholder authors, license, description, and supported-platform values.
 3. Publish the inspected DEB to the APT repository used by your consumers, or, for a pure-Python
-   Module, publish the wheel to a Python package index such as [PyPI](https://pypi.org/).
+   Module or Python bindings, publish the wheel to a Python package index such as
+   [PyPI](https://pypi.org/).
 4. Make `binary_packages.debian` or `binary_packages.wheel` and the install commands match the
    package users can actually obtain.
 5. Document the supported SDK versions and the finite example that consumers can run after
@@ -785,7 +798,7 @@ Once you are familiar with the workflow, use this table as a quick reminder:
 | Run Python demo | `holoscan run <module>_pipeline --language python` |
 | Run CTest | `holoscan test` |
 | Package | `holoscan package holoscan-<name> --pkg-generator DEB` |
-| Package a pure-Python Module | `holoscan package holoscan-<name> --pkg-generator WHEEL` |
+| Package a Python wheel | `holoscan package holoscan-<name> --pkg-generator WHEEL` |
 | Use the build tree from Python | `holoscan install --dev --local` |
 | Install Python package | Build the Python variant, then `cmake --install build/<module>_pipeline --component holoscan-<name>-python --prefix <dir>` |
 | Use an explicit root | `holoscan --project-root /path/to/module <command>` |
@@ -798,8 +811,7 @@ Holoscan CLI `5.0.0` doesn't include the pure-Python Module template. Check
 `holoscan version` and install CLI `5.1.0` or later. Use a CLI 4.x release for an SDK 4 Module.
 
 For a Module with C++ operators, use `--language cpp python` to call them from Python, and
-install the Python package with `cmake --install` as shown in section 4.9. Wheel packaging for
-Python bindings is planned for a later release.
+install the Python package with `cmake --install` or build a wheel as shown in section 4.9.
 
 ### pip can't find a `holoscan-core-cu13` wheel
 
