@@ -33,8 +33,9 @@ its own build, tests, package, and CI.
 
 Module operators are implemented in either C++ or Python. For C++ operators, the scaffold can
 also add Python bindings: a small extension that registers the C++ operators with the SDK
-operator registry so Python applications can use them, and that can ship as a Python wheel. For Python operators, it creates a
-pure-Python Module that needs no C++ code or compiler and ships as a Python wheel.
+operator registry so Python applications can use them, and that can ship as a Python wheel. For
+Python operators, it creates a pure-Python Module that needs no C++ code or compiler and ships as a
+Python wheel.
 
 ### Who creates a Holoscan Module?
 
@@ -256,8 +257,9 @@ metadata declares a C++ namespace and a Debian binary package; with Python bindi
 `Python` and the `holoscan_my_module` Python namespace.
 
 A Module created with `--language python` has no C++ sources, C++ tests, or Debian package
-configuration. Its operators live in the Python package, and its CMake project only stages that
-package and runs the tests:
+configuration. Its operators live in `operators/`, which the wheel and the build tree install as
+the `holoscan_my_module.operators` package. Its CMake project only stages the package and runs the
+tests:
 
 ```text
 holoscan-my-module/
@@ -267,12 +269,13 @@ holoscan-my-module/
 ├── Dockerfile                    # SDK 5.0 CUDA 13 development image
 ├── python/
 │   ├── CMakeLists.txt            # Stages holoscan_my_module in the build tree
-│   └── holoscan_my_module/
-│       └── operators/
-│           └── my_module_op.py   # Typed Input/Output class attributes
-├── operators/
+│   └── holoscan_my_module/       # Package root (__init__.py, py.typed)
+├── operators/                    # Installed as holoscan_my_module.operators
+│   ├── __init__.py               # Exports every operator
 │   └── my_module_op/
-│       └── metadata.json         # Operator metadata only
+│       ├── __init__.py
+│       ├── my_module_op.py       # Typed Input/Output class attributes
+│       └── metadata.json         # Operator metadata (not packaged)
 ├── applications/
 │   └── my_module_pipeline/
 │       └── python/               # Graph → compile → run_async example
@@ -492,11 +495,11 @@ For a native Python build, use `build-native/my_module_pipeline/python/lib` inst
 
 ### 4.6 Implement operators in pure Python
 
-If you generated the Module with `--language python`, its operators are Python classes in the
-`holoscan_my_module` package and there is no C++ to build. They use the same SDK 5 model as the
+If you generated the Module with `--language python`, its operators are Python classes under
+`operators/` and there is no C++ to build. They use the same SDK 5 model as the
 C++ operator: typed ports, a `compute()` method, and a graph that you compose, compile, and run.
 
-The generated operator in `python/holoscan_my_module/operators/my_module_op.py` declares its ports
+The generated operator in `operators/my_module_op/my_module_op.py` declares its ports
 as class attributes and forwards each value:
 
 ```python
@@ -565,8 +568,8 @@ def test_operator_forwards_each_value():
 ```
 
 Replace the pass-through assertions with checks for your operator's real transformation. To add
-an operator, add a module under `python/holoscan_my_module/operators/`, export it from
-`operators/__init__.py`, describe it in `operators/<name>/metadata.json` and
+an operator, add an `operators/<name>/` directory with an `__init__.py`, the implementation, and a
+`metadata.json`, export it from `operators/__init__.py`, add it to
 `metadata.json:module.operator_names`, and cover it in `tests/python`.
 
 To use the build tree from a Python shell or notebook, register it with a development hook from
