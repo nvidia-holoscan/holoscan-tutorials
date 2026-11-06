@@ -601,11 +601,14 @@ depends on:
 ```bash
 python3 -m venv .venv-module
 source .venv-module/bin/activate
-python -m pip install -e . pytest
+python -m pip install "scikit-build-core~=1.0.3" cmake ninja pytest
+python -m pip install --no-build-isolation -Ceditable.rebuild=true -e .
 python -m pytest tests/python
 ```
 
-The editable install copies the operators, so rerun `pip install -e .` after editing them.
+The editable install rebuilds the enabled operators when the package is imported, so source edits
+take effect without reinstalling. It needs `--no-build-isolation` so the rebuild can find CMake
+and Ninja.
 
 When the operators are ready, build the wheel:
 
