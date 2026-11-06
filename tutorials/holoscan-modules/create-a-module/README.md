@@ -257,9 +257,10 @@ metadata declares a C++ namespace and a Debian binary package; with Python bindi
 `Python` and the `holoscan_my_module` Python namespace.
 
 A Module created with `--language python` has no C++ sources, C++ tests, or Debian package
-configuration. Its operators live in `operators/`, which the wheel and the build tree install as
-the `holoscan_my_module.operators` package. Its CMake project only stages the package and runs the
-tests:
+configuration. Its operators live in `operators/`. As for C++ operators, each one is gated on an
+`OP_<name>` CMake option, and the build tree and wheel install the enabled ones as the
+`holoscan_my_module.operators` package. The CMake project compiles nothing; it stages the package
+and runs the tests:
 
 ```text
 holoscan-my-module/
@@ -271,8 +272,10 @@ holoscan-my-module/
 │   ├── CMakeLists.txt            # Stages holoscan_my_module in the build tree
 │   └── holoscan_my_module/       # Package root (__init__.py, py.typed)
 ├── operators/                    # Installed as holoscan_my_module.operators
-│   ├── __init__.py               # Exports every operator
+│   ├── CMakeLists.txt            # add_holohub_operator() per operator (OP_<name>)
+│   ├── __init__.py               # Exports every enabled operator
 │   └── my_module_op/
+│       ├── CMakeLists.txt        # Stages the operator's Python sources
 │       ├── __init__.py
 │       ├── my_module_op.py       # Typed Input/Output class attributes
 │       └── metadata.json         # Operator metadata (not packaged)
@@ -568,9 +571,16 @@ def test_operator_forwards_each_value():
 ```
 
 Replace the pass-through assertions with checks for your operator's real transformation. To add
-an operator, add an `operators/<name>/` directory with an `__init__.py`, the implementation, and a
-`metadata.json`, export it from `operators/__init__.py`, add it to
-`metadata.json:module.operator_names`, and cover it in `tests/python`.
+an operator:
+
+1. Copy `operators/my_module_op/` to `operators/<name>/`: its `__init__.py` exports the class, and
+   its `CMakeLists.txt` calls `holoscan_my_module_add_python_operator()`.
+2. Add `add_holohub_operator(<name>)` to `operators/CMakeLists.txt`, and
+   `cmake.define.OP_<name> = "ON"` to `[tool.scikit-build]` in `pyproject.toml` so the wheel ships
+   it.
+3. Add it to `metadata.json:module.operator_names` and cover it in `tests/python`.
+
+`operators/__init__.py` exports every enabled operator, so it needs no change.
 
 To use the build tree from a Python shell or notebook, register it with a development hook from
 the development container (`holoscan run-container`) or a host with the SDK wheels:
@@ -594,6 +604,8 @@ source .venv-module/bin/activate
 python -m pip install -e . pytest
 python -m pytest tests/python
 ```
+
+The editable install copies the operators, so rerun `pip install -e .` after editing them.
 
 When the operators are ready, build the wheel:
 
