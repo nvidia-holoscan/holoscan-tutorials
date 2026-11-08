@@ -578,9 +578,9 @@ an operator:
 2. Add `add_holohub_operator(<name>)` to `operators/CMakeLists.txt`, and
    `cmake.define.OP_<name> = "ON"` to `[tool.scikit-build]` in `pyproject.toml` so the wheel ships
    it.
-3. Add it to `metadata.json:module.operator_names` and cover it in `tests/python`.
-
-`operators/__init__.py` exports every enabled operator, so it needs no change.
+3. Add it to the `if TYPE_CHECKING:` imports in `operators/__init__.py`, so type checkers and IDEs
+   resolve it. At runtime, `operators/__init__.py` exports every enabled operator.
+4. Add it to `metadata.json:module.operator_names` and cover it in `tests/python`.
 
 To use the build tree from a Python shell or notebook, register it with a development hook from
 the development container (`holoscan run-container`) or a host with the SDK wheels:
