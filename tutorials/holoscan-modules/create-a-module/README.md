@@ -790,9 +790,11 @@ share it:
 
 1. Push the canonical repository and set `metadata.json:module.source_repository` to its URL.
 2. Replace placeholder authors, license, description, and supported-platform values.
-3. Publish the inspected DEB to the APT repository used by your consumers, or, for a pure-Python
-   Module or Python bindings, publish the wheel to a Python package index such as
-   [PyPI](https://pypi.org/).
+3. Publish the inspected DEB to the APT repository used by your consumers. Publish a pure-Python
+   Module's `py3-none-any` wheel to a Python package index such as [PyPI](https://pypi.org/).
+   The Python bindings wheel is tagged `linux_<arch>`, which PyPI rejects. Publish it to an index
+   that accepts that tag, or build it in a `manylinux` environment and repair it to a `manylinux`
+   tag first.
 4. Make `binary_packages.debian` or `binary_packages.wheel` and the install commands match the
    package users can actually obtain.
 5. Document the supported SDK versions and the finite example that consumers can run after
