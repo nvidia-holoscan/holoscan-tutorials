@@ -188,14 +188,16 @@ Now that the repository exists, let's set up its development tools. The generate
 host and container commands on the same version. With `uv`:
 
 ```bash
-uv run holoscan version --json
-uv run holoscan list --json
+uv run --only-group dev holoscan version --json
+uv run --only-group dev holoscan list --json
 ```
 
 The generated `pyproject.toml` selects NVIDIA's Python index for the CLI; the pip fallback uses
 the indexes in `requirements-cli.txt`. `pyproject.toml` has
 `package = false`: uv is provisioning the development environment, not building a Python version
-of your Module.
+of your Module. `--only-group dev` installs only the development tools. Without it, uv also
+installs the runtime dependencies of a Module with Python operators or bindings, including the
+`holoscan-core-cu13` wheel, which needs glibc 2.39 or newer.
 
 If `uv` is not available, create the same isolated environment with `pip`:
 
@@ -208,7 +210,7 @@ holoscan list --json
 ```
 
 The parent `.cli-venv` is only for project generation. From the generated Module root, use
-`uv run` for later commands, or reactivate that Module's `.venv` if you used pip.
+`uv run --only-group dev` for later commands, or reactivate that Module's `.venv` if you used pip.
 
 ### 3.3 Inspect the generated tree
 
@@ -254,7 +256,7 @@ Key things to notice:
 Before publishing, update `metadata.json`, especially `source_repository`, authors, license,
 operator names, supported platforms, and `holoscan_sdk.minimum_required_version`. The generated
 metadata declares a C++ namespace and a Debian binary package; with Python bindings it also lists
-`Python` and the `holoscan_my_module` Python namespace.
+`Python` and the `holoscan.my_module` Python namespace.
 
 A Module created with `--language python` has no C++ sources, C++ tests, or Debian package
 configuration. Its operators live in `operators/`. As for C++ operators, each one is gated on an
@@ -458,7 +460,7 @@ Python source and sink operators around the Module operator:
 
 ```python
 import holoscan as hs
-from holoscan_my_module.operators import MyModuleOp
+from holoscan.my_module.operators import MyModuleOp
 
 graph = hs.Graph("my_module_pipeline", default_clock=hs.RealtimeClock)
 source = graph.op(CounterSource, "source")
@@ -526,7 +528,7 @@ source and a counting sink:
 
 ```python
 import holoscan as hs
-from holoscan_my_module.operators import MyModuleOp
+from holoscan.my_module.operators import MyModuleOp
 
 graph = hs.Graph("my_module_pipeline", default_clock=hs.RealtimeClock)
 source = graph.op(CounterSource, "source")
@@ -706,7 +708,7 @@ use it by appending its installation path to your local `PYTHONPATH` environment
 
 ```bash
 # First run the Python variant as shown in section 4.5.
-cmake --install build/my_module_pipeline --component holoscan-my-module-python \
+cmake --install build/my_module_pipeline --component holoscan-my_module-python_libs \
   --prefix "$PWD/build/install"
 PYTHONPATH="$PWD/build/install/lib/python3.12/site-packages:$PYTHONPATH" \
   python3 -c "import holoscan_my_module; print(holoscan_my_module.__file__)"
@@ -818,7 +820,7 @@ Once you are familiar with the workflow, use this table as a quick reminder:
 | Package | `holoscan package holoscan-<name> --pkg-generator DEB` |
 | Package a Python wheel | `holoscan package holoscan-<name> --pkg-generator WHEEL` |
 | Use the build tree from Python | `holoscan install --dev --local` |
-| Install Python package | Build the Python variant, then `cmake --install build/<module>_pipeline --component holoscan-<name>-python --prefix <dir>` |
+| Install Python package | Build the Python variant, then `cmake --install build/<module>_pipeline --component holoscan-<module_slug>-python_libs --prefix <dir>` |
 | Use an explicit root | `holoscan --project-root /path/to/module <command>` |
 
 ## 6. Troubleshooting
