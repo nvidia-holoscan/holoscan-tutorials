@@ -258,9 +258,17 @@ Then put the board into recovery mode with the board-control tool from your
 build:
 
 ```bash
-BOARDCTL=$(find "$BUILDDIR/tmp/work-shared" \
-  -path '*/Linux_for_Tegra/tools/board_automation/boardctl' -print)
-sudo "$BOARDCTL" -t thor-jetson-devkit recovery
+mapfile -d '' -t boardctl_paths < <(find "$BUILDDIR/tmp/work-shared" \
+  -type f -path '*/Linux_for_Tegra/tools/board_automation/boardctl' -print0)
+BOARDCTL=
+if (( ${#boardctl_paths[@]} == 1 )) && [[ -x "${boardctl_paths[0]}" ]]; then
+  BOARDCTL=${boardctl_paths[0]}
+  sudo "$BOARDCTL" -t thor-jetson-devkit recovery
+else
+  printf 'Expected one executable boardctl; found these candidates:\n'
+  printf '%s\n' "${boardctl_paths[@]}"
+  printf 'Select the tool for this build, or use the physical recovery buttons.\n'
+fi
 ```
 
 The board powers off and back on into recovery. Expect the output to end with:
@@ -269,8 +277,11 @@ The board powers off and back on into recovery. Expect the output to end with:
 Recovery status is now: IN RECOVERY MODE
 ```
 
-If board control is unavailable, use the devkit's physical recovery and reset
-buttons instead.
+If multiple candidates are listed, select the executable from the L4T version
+used by this build, set `BOARDCTL` to its absolute path, and rerun the recovery
+command. If no executable is available or board control fails, leave
+`BOARDCTL` empty (`BOARDCTL=`) and use the devkit's physical recovery and reset
+buttons instead. Confirm recovery mode before flashing.
 
 **Flashing erases the board's storage. Back up anything you need from it first,
 and keep USB and power connected until flashing finishes.**
@@ -290,10 +301,16 @@ If it fails, keep the terminal output and the `log.initrd-flash.*` file in
 `$FLASH_DIR`. After a successful flash, restart the board:
 
 ```bash
-sudo "$BOARDCTL" -t thor-jetson-devkit power_on
+if [[ -n "$BOARDCTL" && -x "$BOARDCTL" ]]; then
+  sudo "$BOARDCTL" -t thor-jetson-devkit power_on
+else
+  printf 'Release Force Recovery and power-cycle the board to boot the new image.\n'
+fi
 ```
 
-`power_on` powers the board off, then back on, and boots the new image.
+`power_on` powers the board off, then back on, and boots the new image. If you
+used the physical buttons, release Force Recovery and power-cycle the board
+instead.
 
 ## 6. Connect to the board
 
