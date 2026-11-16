@@ -1,0 +1,53 @@
+{
+  "$schema": "urn:holoscan:tutorial:v1",
+  "tutorial": {
+    "name": "Build and Run the Holoscan Yocto Demo on AGX Thor",
+    "description": "Build a custom Yocto Linux image with Holoscan SDK 5, flash a Jetson AGX Thor devkit, run the installed C++ hello-world example, check the Python bindings, and optionally run the SDK test suite.",
+    "authors": [
+      {
+        "name": "Holoscan Team",
+        "affiliation": "NVIDIA"
+      }
+    ],
+    "version": "0.1.0",
+    "changelog": {
+      "0.1.0": "Initial release"
+    },
+    "holoscan_sdk": {
+      "minimum_required_version": "5.0.0",
+      "tested_versions": [
+        "5.0.0"
+      ]
+    },
+    "platforms": [
+      "x86_64",
+      "aarch64"
+    ],
+    "tags": [
+      "Yocto",
+      "Embedded Linux",
+      "Jetson AGX Thor",
+      "Deployment"
+    ],
+    "ranking": 1,
+    "requirements": {
+      "hardware": [
+        {
+          "name": "x86-64 Ubuntu 24.04 host",
+          "description": "Native host for building and flashing, with at least 400 GB of free disk space, 32 GB of RAM (64 GB recommended), and Internet access",
+          "required": true
+        },
+        {
+          "name": "NVIDIA Jetson AGX Thor devkit",
+          "description": "Devkit with its power supply and a USB-C cable connecting the host to the recovery port",
+          "required": true
+        },
+        {
+          "name": "Monitor",
+          "description": "Connected to the board with a graphical session running for optional display tests; otherwise those tests are skipped",
+          "required": false
+        }
+      ]
+    }
+  }
+}
