@@ -103,10 +103,21 @@ sysctl kernel.apparmor_restrict_unprivileged_userns
 
 If it reports `1`, add an AppArmor exception for BitBake. This profile grants
 user-namespace creation to any executable matching `/**/bitbake/bin/bitbake`,
-not just this checkout, while keeping the system-wide restriction enabled:
+not just this checkout, while keeping the system-wide restriction enabled.
+
+**Security risk:** Any local user can create an executable at a matching path
+and gain access to user namespaces through this exception. This weakens a host
+security restriction and exposes additional kernel functionality to those
+processes. Use this exception only on a trusted build host and remove the
+profile you created when it is no longer needed.
+
+Create the profile only if one does not already exist:
 
 ```bash
-sudo tee /etc/apparmor.d/bitbake >/dev/null <<'EOF'
+if sudo test -e /etc/apparmor.d/bitbake || sudo test -L /etc/apparmor.d/bitbake; then
+  echo 'Existing BitBake profile found; leave it unchanged and review it before continuing.'
+else
+  sudo tee /etc/apparmor.d/bitbake >/dev/null <<'EOF'
 abi <abi/4.0>,
 include <tunables/global>
 
@@ -114,14 +125,17 @@ profile bitbake /**/bitbake/bin/bitbake flags=(unconfined) {
   userns,
 }
 EOF
-sudo apparmor_parser -r /etc/apparmor.d/bitbake
+  sudo apparmor_parser -r /etc/apparmor.d/bitbake
+fi
 ```
 
 Without this, BitBake stops with `User namespaces are not usable by BitBake`.
 Run BitBake as an ordinary user, not as root.
 
-Once you no longer need this host for BitBake builds, unload and remove the
-profile created above to restore the previous user-namespace restrictions:
+Only if you created the profile above, unload and remove it once you no longer
+need this host for BitBake builds to restore the previous user-namespace
+restrictions. Skip this cleanup if a profile already existed or you skipped
+profile creation:
 
 ```bash
 sudo apparmor_parser -R /etc/apparmor.d/bitbake && \
