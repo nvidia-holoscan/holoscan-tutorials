@@ -129,6 +129,28 @@ EOF
 fi
 ```
 
+If a profile already existed, inspect its contents and check the loaded
+profiles with [`aa-status`](https://documentation.ubuntu.com/server/how-to/security/apparmor/):
+
+```bash
+sudo cat /etc/apparmor.d/bitbake
+sudo aa-status
+```
+
+Check that its executable path matches your BitBake checkout and that it grants
+`userns,`. Look for the profile's declared name (`bitbake` in the example above)
+in the loaded profiles reported by `aa-status`; a file on disk alone is not
+enough. If the existing profile is appropriate but is not loaded, load it
+without overwriting the file, then check the status again:
+
+```bash
+sudo apparmor_parser -r /etc/apparmor.d/bitbake
+sudo aa-status
+```
+
+If the existing policy does not permit BitBake's user namespaces, have the host
+administrator review it before continuing rather than replacing it.
+
 Without this, BitBake stops with `User namespaces are not usable by BitBake`.
 Run BitBake as an ordinary user, not as root.
 
