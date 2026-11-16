@@ -5,6 +5,15 @@ SPDX-License-Identifier: Apache-2.0
 
 # Build and run the Holoscan Yocto demo on AGX Thor
 
+```mermaid
+flowchart TD
+    A[Set up Ubuntu build host] --> B[Fetch sources and configure Yocto]
+    B --> C[Build Holoscan image]
+    C --> D[Flash AGX Thor]
+    D --> E[Connect over USB SSH]
+    E --> F[Run Holoscan example]
+```
+
 This tutorial takes you from a fresh Ubuntu host to a Jetson AGX Thor T5000 devkit
 running a Holoscan application on a custom Yocto Linux image. Along the way you
 will:
@@ -92,8 +101,9 @@ Check the setting:
 sysctl kernel.apparmor_restrict_unprivileged_userns
 ```
 
-If it reports `1`, allow BitBake alone to create user namespaces rather than
-disabling the restriction system-wide:
+If it reports `1`, add an AppArmor exception for BitBake. This profile grants
+user-namespace creation to any executable matching `/**/bitbake/bin/bitbake`,
+not just this checkout, while keeping the system-wide restriction enabled:
 
 ```bash
 sudo tee /etc/apparmor.d/bitbake >/dev/null <<'EOF'
@@ -109,6 +119,14 @@ sudo apparmor_parser -r /etc/apparmor.d/bitbake
 
 Without this, BitBake stops with `User namespaces are not usable by BitBake`.
 Run BitBake as an ordinary user, not as root.
+
+Once you no longer need this host for BitBake builds, unload and remove the
+profile created above to restore the previous user-namespace restrictions:
+
+```bash
+sudo apparmor_parser -R /etc/apparmor.d/bitbake && \
+  sudo rm /etc/apparmor.d/bitbake
+```
 
 ## 2. Fetch the sources
 
@@ -157,8 +175,24 @@ from the log command. As described in the
 [`meta-iceoryx2` README](https://github.com/nvidia-holoscan/meta-iceoryx2/blob/holoscan-sdk-5.0.0/README.md#setup-the-yocto-build),
 add the layer after entering the build environment. Its `meta-oe` dependency
 is already included by `tegrademo-extended`. Adding `meta-iceoryx2` also
-activates the distro's `meta-tegrademo/dynamic-layers/meta-iceoryx2` appends,
-which apply the iceoryx2 patches required by Holoscan's HoloMQ transport.
+activates the `dynamic-layers/meta-iceoryx2` content in `meta-tegra-community`
+and `meta-tegrademo`, which provides the Holoscan recipes, the demo package
+groups, and the iceoryx2 patches required by HoloMQ.
+
+Check that the layer is registered and its dynamic appends are active:
+
+```bash
+bitbake-layers show-layers | grep meta-iceoryx2
+bitbake-layers show-appends | grep 'dynamic-layers/meta-iceoryx2/recipes-iceoryx2/'
+```
+
+The first command should list the `meta-iceoryx2` layer. The second should
+list the iceoryx2 `.bbappend` paths from `meta-tegra-community`. Stop before
+building if either command prints nothing. If the layer is missing, rerun
+`bitbake-layers add-layer ../layers/meta-iceoryx2` from this build directory.
+If the layer is listed but its appends are missing, check that the
+`meta-tegra-community` layer is included and that you used the source revisions
+from steps 2 and 3.
 
 To run the SDK tests in step 8 later, also add this block now. It increases
 build time and image size:
@@ -330,6 +364,11 @@ scp -r root@192.168.55.1:/data/hsdk-ptest.REPLACE_WITH_SUFFIX ./
 
 - **Recipe not found:** check that you cloned the branch from step 2, that you
   used a fresh build directory, and that you selected `tegrademo-extended`.
+- **Image recipe skipped:** `demo-image-holoscan` is intentionally skipped with
+  `requires the meta-iceoryx2 layer` when that layer is missing. Run
+  `bitbake-layers show-layers | grep meta-iceoryx2`. If nothing is printed,
+  rerun the `add-layer` command from step 3, then repeat its dynamic-appends
+  check before building.
 - **Build failure:** save the failing task's log. Check free disk space and
   memory, and look in `log.do_rootfs` for package conflicts or rootfs-size
   errors. For QA errors about host paths in packaged files, inspect the reported
