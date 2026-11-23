@@ -232,15 +232,37 @@ class HardwareGraphTests(unittest.TestCase):
         self.assertEqual(self.fake.fake_mit_writes(), before)
         self.assertEqual(self.fake.fake_disables(), 7)
 
-    def test_stock_feedback_cache_limitation(self):
+    def test_frozen_feedback_disables_owned_motors(self):
         self.prepare()
         before = self.robot.read_state(1)
         self.fake.fake_freeze(1)
-        self.fake.fake_set_status(0, 13)  # Real fault is hidden by the frozen cache.
-        after = self.robot.read_state(2)
-        self.assertEqual(before.position, after.position)
-        self.assertEqual(after.status[0], 1)
-        self.assertGreater(after.timestamp_ns, before.timestamp_ns)
+        time.sleep(0.02)
+        aging = self.robot.read_state(2)
+        self.assertLess(aging.timestamp_ns - before.timestamp_ns, 1_000_000,
+                        "state time must be the motor reply time, not the host read time")
+        time.sleep(self.config.watchdog_ms / 1000)
+        with self.assertRaisesRegex(ValueError, "stale motor feedback"):
+            self.robot.read_state(3)
+        self.assertEqual(self.fake.fake_disables(), 7)
+
+    def test_frozen_feedback_blocks_commands(self):
+        self.prepare()
+        controller = GravityCompensation(self.config, self.parameters)
+        controller.initialize()
+        command = controller.compute(self.robot.read_state(1), **self.parameters.operator_kwargs())
+        self.fake.fake_freeze(1)
+        time.sleep(self.config.watchdog_ms / 1000)
+        with self.assertRaisesRegex(ValueError, "expired|not recent"):
+            self.robot.send_command(command)
+        self.assertEqual(self.fake.fake_disables(), 7)
+
+    def test_disabled_motor_read_requires_new_reply(self):
+        self.robot.connect()
+        self.robot.read_state()
+        self.fake.fake_freeze(1)
+        with self.assertRaisesRegex(ValueError, "feedback unavailable"):
+            self.robot.read_state()
+        self.assertEqual(self.fake.fake_writes(), 0)
 
     def test_motor_fault_disables_owned_motors(self):
         self.prepare()
@@ -295,7 +317,8 @@ class HardwareGraphTests(unittest.TestCase):
         with patch.dict(os.environ, MOTORBRIDGE_LIB=str(FAKE)), \
                 patch.object(Robot, "send_command", lambda robot, command: None), \
                 contextlib.redirect_stdout(io.StringIO()):
-            with self.assertRaisesRegex(RuntimeError, "command completion watchdog"):
+            # Without commands, feedback goes stale at the same deadline; either check stops the arm.
+            with self.assertRaisesRegex(RuntimeError, "command completion watchdog|stale motor feedback"):
                 run(CONFIG)
         self.assertEqual(self.fake.fake_enables(), 7)
         self.assertEqual(self.fake.fake_disables(), 7)

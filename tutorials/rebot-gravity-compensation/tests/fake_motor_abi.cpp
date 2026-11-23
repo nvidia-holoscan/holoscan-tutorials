@@ -19,12 +19,15 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <vector>
 
 struct MotorController {};
 struct MotorHandle {
   MotorState cache{};
+  std::uint64_t sequence{};
+  std::chrono::steady_clock::time_point received{};
   std::uint8_t status{};
   std::uint32_t watchdog{};
 };
@@ -38,6 +41,8 @@ void update(MotorHandle* motor) {
   if (frozen) return;
   motor->cache.has_value = 1;
   motor->cache.status_code = motor->status;
+  ++motor->sequence;
+  motor->received = std::chrono::steady_clock::now();
 }
 }
 
@@ -78,6 +83,16 @@ int32_t motor_handle_get_register_u32(MotorHandle* motor, uint8_t, uint32_t, uin
 }
 int32_t motor_handle_request_feedback(MotorHandle* motor) { update(motor); return 0; }
 int32_t motor_handle_get_state(MotorHandle* motor, MotorState* out) { *out = motor->cache; return 0; }
+int32_t motor_handle_get_state_snapshot(MotorHandle* motor, MotorState* out, MotorStateMetadata* metadata) {
+  *out = motor->cache;
+  *metadata = {};
+  if (out->has_value) {
+    metadata->feedback_age_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now() - motor->received).count();
+    metadata->feedback_sequence = motor->sequence;
+  }
+  return 0;
+}
 int32_t motor_handle_send_mit(MotorHandle* motor, float, float, float kp, float, float) {
   ++writes; ++mit_writes;
   if (fail_send) return -1;
@@ -87,11 +102,12 @@ int32_t motor_handle_send_mit(MotorHandle* motor, float, float, float kp, float,
 
 // The official Python SDK binds the whole ABI when loading the library.
 // Operations outside this demo fail without touching hardware.
-const char* motor_abi_version(void) { return "0.5.0"; }
+const char* motor_abi_version(void) { return "0.6.1"; }
 const char* motor_abi_capabilities_json(void) { return "{}"; }
 MotorController* motor_controller_new_socketcan(const char*) { return nullptr; }
 MotorController* motor_controller_new_socketcanfd(const char*) { return nullptr; }
 MotorController* motor_controller_new_dm_device(const char*, const char*) { return nullptr; }
+MotorController* motor_controller_new_mcu_serial(const char*, uint32_t) { return nullptr; }
 int32_t motor_controller_enable_all(MotorController*) { return -1; }
 int32_t motor_controller_disable_all(MotorController*) { return -1; }
 int32_t motor_controller_shutdown(MotorController*) { return -1; }
@@ -100,6 +116,7 @@ MotorHandle* motor_controller_add_myactuator_motor(MotorController*, uint16_t, u
 MotorHandle* motor_controller_add_robstride_motor(MotorController*, uint16_t, uint16_t, const char*) { return nullptr; }
 MotorHandle* motor_controller_add_hightorque_motor(MotorController*, uint16_t, uint16_t, const char*) { return nullptr; }
 int32_t motor_handle_clear_error(MotorHandle*) { return -1; }
+int32_t motor_handle_stop(MotorHandle*) { return -1; }
 int32_t motor_handle_set_zero_position(MotorHandle*) { return -1; }
 int32_t motor_handle_send_pos_vel(MotorHandle*, float, float) { return -1; }
 int32_t motor_handle_robstride_send_pos_vel_pp(MotorHandle*, float, float, float) { return -1; }
@@ -130,4 +147,16 @@ int32_t motor_handle_damiao_get_param_f32(MotorHandle*, uint16_t, uint32_t, floa
 int32_t motor_handle_damiao_get_param_u32(MotorHandle*, uint16_t, uint32_t, uint32_t*) { return -1; }
 int32_t motor_handle_damiao_write_param_f32(MotorHandle*, uint16_t, float) { return -1; }
 int32_t motor_handle_damiao_write_param_u32(MotorHandle*, uint16_t, uint32_t) { return -1; }
+int32_t motor_handle_hightorque_send_pos_vel_acc(MotorHandle*, float, float, float) { return -1; }
+int32_t motor_handle_hightorque_send_pos_classic(MotorHandle*, float, float) { return -1; }
+int32_t motor_handle_hightorque_get_register(MotorHandle*, uint8_t, uint8_t, uint32_t, float*) { return -1; }
+int32_t motor_handle_hightorque_request_register(MotorHandle*, uint8_t, uint8_t) { return -1; }
+int32_t motor_handle_hightorque_get_cached_register(MotorHandle*, uint8_t, uint8_t*, float*) { return -1; }
+int32_t motor_handle_hightorque_send_torque(MotorHandle*, float) { return -1; }
+int32_t motor_handle_hightorque_send_dq_voltage(MotorHandle*, float) { return -1; }
+int32_t motor_handle_hightorque_send_dq_current(MotorHandle*, float) { return -1; }
+int32_t motor_handle_hightorque_brake(MotorHandle*) { return -1; }
+int32_t motor_handle_hightorque_set_run_mode(MotorHandle*, uint8_t) { return -1; }
+int32_t motor_handle_hightorque_write_register(MotorHandle*, uint8_t, int16_t, uint8_t) { return -1; }
+int32_t motor_handle_hightorque_set_periodic_report(MotorHandle*, uint16_t) { return -1; }
 }

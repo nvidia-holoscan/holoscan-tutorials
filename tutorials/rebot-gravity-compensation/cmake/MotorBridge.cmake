@@ -13,11 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Build the unmodified motorbridge v0.5.0 C ABI.
+# Build the unmodified motorbridge v0.6.1 C ABI.
 include(ExternalProject)
 find_program(REBOT_CARGO_EXECUTABLE cargo REQUIRED)
 find_package(Git REQUIRED)
-set(REBOT_MOTORBRIDGE_COMMIT "082cbb8c36dfdc8fbf9baa4cc02c5992ab0dc2ad")
+set(REBOT_MOTORBRIDGE_COMMIT "7aabc9851114646a7b2a3c28599e90e6d9802de1")
 set(_rebot_motor_target "${CMAKE_BINARY_DIR}/motorbridge-cargo")
 set(_rebot_cargo_command "${REBOT_CARGO_EXECUTABLE}")
 set(_rebot_cargo_target_args)

@@ -268,7 +268,8 @@ class CartesianGraphTests(unittest.TestCase):
     def test_watchdog_covers_missing_first_command(self):
         with patch.object(Robot, "send_command", lambda robot, command: None), \
                 patch.object(ConsoleInput, "poll", return_value=[]), contextlib.redirect_stdout(io.StringIO()):
-            with self.assertRaisesRegex(RuntimeError, "command completion watchdog"):
+            # Without commands, feedback goes stale at the same deadline; either check stops the arm.
+            with self.assertRaisesRegex(RuntimeError, "command completion watchdog|stale motor feedback"):
                 run(CONFIG)
         self.assertEqual(self.fake.fake_disables(), 7)
 

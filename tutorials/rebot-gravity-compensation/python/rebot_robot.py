@@ -16,7 +16,7 @@
 """Damiao configuration and hardware control through the motorbridge Python SDK.
 
 The lifecycle and checks mirror src/robot.cpp. Nothing connects at import time.
-Feedback timestamps date host cache reads, not receipt of motor packets.
+Feedback timestamps are the host receive time of the oldest motor frame in a sample.
 """
 
 from dataclasses import dataclass
@@ -171,27 +171,40 @@ class Robot:
             require(self.controller is not None, "robot is not connected")
             timeout_ns = self.config.watchdog_ms * 1_000_000 if any(self.owned) else 250_000_000
             deadline = time.monotonic_ns() + timeout_ns
+            max_age_ns = self.config.watchdog_ms * 1_000_000
             try:
+                # Disabled motors must answer this query with a newly received frame.
+                requested = []
                 for motor, owned in zip(self.motors, self.owned):
+                    snapshot = None if owned else motor.get_state_snapshot()
+                    requested.append(snapshot.feedback_sequence if snapshot else 0)
                     if not owned:
                         motor.request_feedback()
                 while True:
                     self.controller.poll_feedback_once()
-                    timestamp = time.monotonic_ns()
-                    states, ready = [], True
-                    for motor, owned, joint in zip(self.motors, self.owned, self.config.joints):
-                        state = motor.get_state()
-                        if state is None:
+                    states, ready, oldest = [], True, None
+                    for motor, owned, joint, after in zip(self.motors, self.owned, self.config.joints, requested):
+                        snapshot = motor.get_state_snapshot()
+                        now = time.monotonic_ns()
+                        if snapshot is None or (not owned and snapshot.feedback_sequence <= after):
                             ready = False
-                        else:
-                            require(all(math.isfinite(v) for v in (state.pos, state.vel, state.torq)),
-                                    f"nonfinite feedback: {joint.name}")
-                            require(state.status_code in (0, 1),
-                                    f"DM motor fault {joint.name} status={state.status_code}")
-                            ready = ready and (not owned or state.status_code == 1)
+                            states.append(None)
+                            continue
+                        state, age_ns = snapshot.state, round(snapshot.feedback_age_s * 1e9)
+                        # Owned motors only reply to commands, so waiting cannot refresh them.
+                        require(not owned or age_ns < max_age_ns,
+                                f"stale motor feedback: {joint.name} last replied {age_ns // 1_000_000} ms ago")
+                        require(all(math.isfinite(v) for v in (state.pos, state.vel, state.torq)),
+                                f"nonfinite feedback: {joint.name}")
+                        require(state.status_code in (0, 1),
+                                f"DM motor fault {joint.name} status={state.status_code}")
+                        ready = ready and (not owned or state.status_code == 1)
+                        oldest = now - age_ns if oldest is None else min(oldest, now - age_ns)
                         states.append(state)
                     require(time.monotonic_ns() < deadline, "feedback unavailable or motor disabled")
                     if ready:
+                        # Separate clock reads add jitter; never report an older sample time.
+                        timestamp = max(oldest, self.last_read_ns)
                         self.last_read_ns = timestamp
                         return JointState(sequence, timestamp,
                                           tuple(s.pos for s in states), tuple(s.vel for s in states),
@@ -251,7 +264,7 @@ class Robot:
                 require(0 < command.timestamp_ns <= now and now - command.timestamp_ns <= max_age,
                         "expired or invalid command timestamp")
                 require(self.last_read_ns > 0 and now - self.last_read_ns < max_age,
-                        "joint state has not been read recently")
+                        "joint feedback is not recent")
                 require(any(self.owned), "no motors enabled by this instance")
                 self.validate_command(command)  # Validate the whole batch before transmitting.
                 for i, owned in enumerate(self.owned):

@@ -26,6 +26,7 @@
 #include <iostream>
 #include <limits>
 #include <stdexcept>
+#include <thread>
 
 namespace {
 void check(bool value, const char* message) { if (!value) throw std::runtime_error(message); }
@@ -93,11 +94,9 @@ int main() try {
   {
     rebot::Robot robot(cfg, REBOT_TEST_MOTOR_LIBRARY);
     robot.connect();
-    const auto state = robot.read_state();
+    robot.read_state();
     fake.freeze(1);
-    const auto cached = robot.read_state();
-    check(cached.position == state.position && cached.read_at >= state.read_at,
-          "stock ABI must accept repeated cache values without claiming sensor freshness");
+    rejects([&] { robot.read_state(std::chrono::milliseconds(5)); }, "accepts cached feedback without a new reply");
   }
   check(fake.writes() == 0, "feedback reads must not change motor settings");
   fake.reset(); fake.freeze(1);
@@ -146,12 +145,33 @@ int main() try {
   {
     rebot::Robot robot(cfg, REBOT_TEST_MOTOR_LIBRARY);
     robot.connect(); robot.prepare_mit(command(cfg)); robot.read_state();
+    robot.send_mit(command(cfg));
     fake.freeze(1);
-    robot.read_state(); robot.send_mit(command(cfg));
-    check(fake.disables() == 0, "stock ABI cannot detect silence after valid cached feedback");
+    const auto before = robot.read_state();
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    const auto aging = robot.read_state();
+    check(aging.read_at - before.read_at < std::chrono::milliseconds(1),
+          "state time must be the motor reply time, not the host read time");
+    std::this_thread::sleep_for(std::chrono::milliseconds(cfg.watchdog_ms));
+    rejects([&] { robot.read_state(); }, "accepts frozen feedback");
+    check(fake.disables() == 7, "frozen feedback must disable all owned motors");
+  }
+  fake.reset();
+  {
+    rebot::Robot robot(cfg, REBOT_TEST_MOTOR_LIBRARY);
+    robot.connect(); robot.prepare_mit(command(cfg)); robot.read_state();
+    fake.freeze(1);
+    std::this_thread::sleep_for(std::chrono::milliseconds(cfg.watchdog_ms));
+    rejects([&] { robot.send_mit(command(cfg)); }, "commands from frozen feedback");
+    check(fake.disables() == 7, "stale command state must disable all owned motors");
+  }
+  fake.reset();
+  {
+    rebot::Robot robot(cfg, REBOT_TEST_MOTOR_LIBRARY);
+    robot.connect(); robot.prepare_mit(command(cfg));
   }
   check(fake.disables() == 7, "destruction must disable owned motors");
-  std::cout << "Driver limits, ownership, failures, and stock cache limitation passed\n";
+  std::cout << "Driver limits, ownership, failures, and feedback freshness passed\n";
 } catch (const std::exception& error) {
   std::cerr << error.what() << '\n'; return 1;
 }

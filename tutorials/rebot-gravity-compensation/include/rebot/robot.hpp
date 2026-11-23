@@ -51,7 +51,7 @@ RobotConfig load_robot_config(const holoscan::config::Document& document, const 
 struct JointState {
   std::vector<double> position, velocity, torque;
   std::vector<std::uint8_t> status;
-  // Host cache-read time. Stock motorbridge exposes no sensor timestamp or age.
+  // Host receive time of the oldest motor feedback frame in this sample.
   std::chrono::steady_clock::time_point read_at{};
 };
 
