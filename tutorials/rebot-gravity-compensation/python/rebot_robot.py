@@ -184,8 +184,9 @@ class Robot:
                     self.controller.poll_feedback_once()
                     states, ready, oldest = [], True, None
                     for motor, owned, joint, after in zip(self.motors, self.owned, self.config.joints, requested):
-                        snapshot = motor.get_state_snapshot()
+                        # Read the clock first so a pause cannot make the frame look newer.
                         now = time.monotonic_ns()
+                        snapshot = motor.get_state_snapshot()
                         if snapshot is None or (not owned and snapshot.feedback_sequence <= after):
                             ready = False
                             states.append(None)

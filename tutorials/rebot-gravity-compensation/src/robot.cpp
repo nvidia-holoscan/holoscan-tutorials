@@ -262,8 +262,9 @@ JointState Robot::read_state(std::chrono::milliseconds timeout) try {
     for (std::size_t i = 0; i < n; ++i) {
       MotorState state{};
       MotorStateMetadata metadata{};
-      p.check(p.get_snapshot(p.motors[i], &state, &metadata), "read feedback " + p.cfg.joints[i].name);
+      // Read the clock first so a pause cannot make the frame look newer.
       const auto now = Clock::now();
+      p.check(p.get_snapshot(p.motors[i], &state, &metadata), "read feedback " + p.cfg.joints[i].name);
       if (!state.has_value || (!p.owned[i] && metadata.feedback_sequence <= requested[i])) {
         ready = false; missing += " " + p.cfg.joints[i].name; continue;
       }
