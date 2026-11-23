@@ -59,6 +59,13 @@ def fake_library():
     return library
 
 
+def drop_command_keep_feedback(robot, command):
+    """Skip the motor command but keep fake feedback fresh, isolating the command watchdog."""
+    with robot.lock:
+        for motor in robot.motors:
+            motor.request_feedback()
+
+
 class GravityTests(unittest.TestCase):
     def setUp(self):
         self.config, self.parameters = load_configuration(CONFIG)
@@ -315,10 +322,9 @@ class HardwareGraphTests(unittest.TestCase):
 
     def test_host_watchdog_covers_missing_first_graph_command(self):
         with patch.dict(os.environ, MOTORBRIDGE_LIB=str(FAKE)), \
-                patch.object(Robot, "send_command", lambda robot, command: None), \
+                patch.object(Robot, "send_command", drop_command_keep_feedback), \
                 contextlib.redirect_stdout(io.StringIO()):
-            # Without commands, feedback goes stale at the same deadline; either check stops the arm.
-            with self.assertRaisesRegex(RuntimeError, "command completion watchdog|stale motor feedback"):
+            with self.assertRaisesRegex(RuntimeError, "command completion watchdog"):
                 run(CONFIG)
         self.assertEqual(self.fake.fake_enables(), 7)
         self.assertEqual(self.fake.fake_disables(), 7)
