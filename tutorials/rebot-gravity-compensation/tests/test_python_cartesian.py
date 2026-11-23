@@ -49,6 +49,13 @@ def state(position=(0.1, -0.8, -0.5, 0.2, 0.15, -0.1, 0.0), velocity=(0.0,) * 7)
     return JointState(1, 1_000_000_000, tuple(position), tuple(velocity), (0.0,) * 7, (0,) * 7)
 
 
+def drop_command_keep_feedback(robot, command):
+    """Skip the motor command but keep fake feedback fresh, isolating the command watchdog."""
+    with robot.lock:
+        for motor in robot.motors:
+            motor.request_feedback()
+
+
 class CartesianMathTests(unittest.TestCase):
     def setUp(self):
         self.config, self.gravity_params, self.params = load_configuration(CONFIG)
@@ -266,7 +273,7 @@ class CartesianGraphTests(unittest.TestCase):
         self.assertEqual(self.fake.fake_writes(), 0)
 
     def test_watchdog_covers_missing_first_command(self):
-        with patch.object(Robot, "send_command", lambda robot, command: None), \
+        with patch.object(Robot, "send_command", drop_command_keep_feedback), \
                 patch.object(ConsoleInput, "poll", return_value=[]), contextlib.redirect_stdout(io.StringIO()):
             with self.assertRaisesRegex(RuntimeError, "command completion watchdog"):
                 run(CONFIG)

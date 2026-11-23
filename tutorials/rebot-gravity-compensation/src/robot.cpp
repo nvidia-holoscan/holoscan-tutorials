@@ -165,7 +165,7 @@ struct Robot::Impl {
   decltype(&motor_handle_disable) disable_motor{};
   decltype(&motor_handle_ensure_mode) ensure_mode{};
   decltype(&motor_handle_request_feedback) request{};
-  decltype(&motor_handle_get_state) get_state{};
+  decltype(&motor_handle_get_state_snapshot) get_snapshot{};
   decltype(&motor_handle_send_mit) send{};
   decltype(&motor_handle_set_can_timeout_ms) watchdog{};
   decltype(&motor_handle_get_register_u32) get_register{};
@@ -214,7 +214,7 @@ void Robot::connect() {
     REBOT_BIND(disable_motor, "motor_handle_disable");
     REBOT_BIND(ensure_mode, "motor_handle_ensure_mode");
     REBOT_BIND(request, "motor_handle_request_feedback");
-    REBOT_BIND(get_state, "motor_handle_get_state");
+    REBOT_BIND(get_snapshot, "motor_handle_get_state_snapshot");
     REBOT_BIND(send, "motor_handle_send_mit");
     REBOT_BIND(watchdog, "motor_handle_set_can_timeout_ms");
     REBOT_BIND(get_register, "motor_handle_get_register_u32");
@@ -237,26 +237,42 @@ JointState Robot::read_state(std::chrono::milliseconds timeout) try {
   const bool active = std::any_of(p.owned.begin(), p.owned.end(), [](bool value) { return value; });
   if (active) timeout = std::min(timeout, std::chrono::milliseconds(p.cfg.watchdog_ms));
   const auto deadline = Clock::now() + timeout;
-  // Enabled motors reply to MIT commands; disabled motors need a feedback query.
-  for (std::size_t i = 0; i < p.motors.size(); ++i)
-    if (!p.owned[i]) p.check(p.request(p.motors[i]), "request feedback " + p.cfg.joints[i].name);
+  const auto n = p.motors.size();
+  const auto max_age = std::chrono::milliseconds(p.cfg.watchdog_ms);
+  // Enabled motors reply to MIT commands; disabled motors need a feedback query
+  // and must answer it with a frame received after the request.
+  std::vector<std::uint64_t> requested(n, 0);
+  for (std::size_t i = 0; i < n; ++i) {
+    if (p.owned[i]) continue;
+    MotorState state{};
+    MotorStateMetadata metadata{};
+    p.check(p.get_snapshot(p.motors[i], &state, &metadata), "read feedback " + p.cfg.joints[i].name);
+    requested[i] = state.has_value ? metadata.feedback_sequence : 0;
+    p.check(p.request(p.motors[i]), "request feedback " + p.cfg.joints[i].name);
+  }
 
   JointState result;
-  const auto n = p.motors.size();
   result.position.resize(n); result.velocity.resize(n); result.torque.resize(n); result.status.resize(n);
   for (;;) {
     p.check(p.poll(p.controller), "poll feedback");
     bool ready = true;
     std::string missing;
-    // This dates the cache read. The stock C ABI cannot tell us when a motor
-    // last replied, so repeated cached values are accepted, even if obsolete.
-    result.read_at = Clock::now();
+    // read_at is the receive time of the oldest motor frame in this sample.
+    auto oldest = Clock::time_point::max();
     for (std::size_t i = 0; i < n; ++i) {
       MotorState state{};
-      p.check(p.get_state(p.motors[i], &state), "read feedback " + p.cfg.joints[i].name);
-      if (!state.has_value) {
+      MotorStateMetadata metadata{};
+      // Read the clock first so a pause cannot make the frame look newer.
+      const auto now = Clock::now();
+      p.check(p.get_snapshot(p.motors[i], &state, &metadata), "read feedback " + p.cfg.joints[i].name);
+      if (!state.has_value || (!p.owned[i] && metadata.feedback_sequence <= requested[i])) {
         ready = false; missing += " " + p.cfg.joints[i].name; continue;
       }
+      const auto age = std::chrono::nanoseconds(metadata.feedback_age_ns);
+      // Owned motors only reply to commands, so waiting cannot refresh them.
+      require(!p.owned[i] || age < max_age,
+              "stale motor feedback: " + p.cfg.joints[i].name + " last replied " +
+                  std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(age).count()) + " ms ago");
       require(std::isfinite(state.pos) && std::isfinite(state.vel) && std::isfinite(state.torq),
               "nonfinite feedback: " + p.cfg.joints[i].name);
       require(state.status_code == 0 || state.status_code == 1,
@@ -266,9 +282,12 @@ JointState Robot::read_state(std::chrono::milliseconds timeout) try {
       }
       result.position[i] = state.pos; result.velocity[i] = state.vel; result.torque[i] = state.torq;
       result.status[i] = state.status_code;
+      oldest = std::min(oldest, now - std::chrono::duration_cast<Clock::duration>(age));
     }
     require(Clock::now() < deadline, "feedback unavailable for:" + missing);
     if (ready) {
+      // Separate clock reads add jitter; never report an older sample time.
+      result.read_at = std::max(oldest, p.last_state.read_at);
       p.last_state = result;
       return result;
     }
@@ -299,8 +318,7 @@ void Robot::prepare_mit(const MitCommand& initial) {
       p.check(p.get_register(p.motors[i], 9, 100, &watchdog_value), "verify CAN watchdog " + p.cfg.joints[i].name);
       require(watchdog_value == p.cfg.watchdog_ms * 20, "CAN watchdog verification failed for " + p.cfg.joints[i].name);
     }
-    // Mode changes can take seconds. Re-read the cache before enabling.
-    // This can reject observed movement but cannot verify receipt of new feedback.
+    // Mode changes can take seconds. Read fresh feedback before enabling.
     measured = read_state();
     for (std::size_t i = 0; i < p.motors.size(); ++i)
       require(std::abs(initial.position[i] - measured.position[i]) < 0.15,
@@ -322,7 +340,7 @@ void Robot::send_mit(const MitCommand& command) {
     validate_mit_command(p.cfg, command);
     require(p.last_state.read_at != Clock::time_point{} &&
             Clock::now() - p.last_state.read_at < std::chrono::milliseconds(p.cfg.watchdog_ms),
-            "joint state has not been read recently");
+            "joint feedback is not recent");
     require(std::any_of(p.owned.begin(), p.owned.end(), [](bool value) { return value; }), "no motors enabled by this instance");
     for (std::size_t i = 0; i < p.motors.size(); ++i) if (p.owned[i]) p.send_one(i, command);
   } catch (...) { disable(); throw; }
