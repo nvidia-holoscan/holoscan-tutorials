@@ -35,7 +35,8 @@ if(CMAKE_CROSSCOMPILING)
 endif()
 set(REBOT_MOTOR_LIBRARY "${_rebot_motor_output}/${CMAKE_SHARED_LIBRARY_PREFIX}motor_abi${CMAKE_SHARED_LIBRARY_SUFFIX}"
     CACHE FILEPATH "Unmodified motorbridge runtime built from pinned source" FORCE)
-set(REBOT_MOTORBRIDGE_SOURCE "${CMAKE_BINARY_DIR}/_deps/motorbridge")
+# A per-commit checkout lets a new pin fetch despite UPDATE_DISCONNECTED.
+set(REBOT_MOTORBRIDGE_SOURCE "${CMAKE_BINARY_DIR}/_deps/motorbridge-${REBOT_MOTORBRIDGE_COMMIT}")
 ExternalProject_Add(rebot_motorbridge_external
   GIT_REPOSITORY https://github.com/motorbridge/motorbridge.git
   GIT_TAG "${REBOT_MOTORBRIDGE_COMMIT}"
