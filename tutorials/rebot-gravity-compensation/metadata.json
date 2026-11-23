@@ -13,8 +13,9 @@
       "Python",
       "C++"
     ],
-    "version": "1.0.0",
+    "version": "1.0.1",
     "changelog": {
+      "1.0.1": "Reject stale motor feedback using motorbridge 0.6.1 receive age",
       "1.0.0": "Initial release"
     },
     "holoscan_sdk": {
